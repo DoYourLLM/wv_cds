@@ -27,17 +27,27 @@ Both items start whatever they need - you do not have to launch wv, source
 
 ## Setup
 
-**1. Run the installer once**
+**1. Get the package, then run the installer once**
 
 ```bash
-tar xf wv_cds.tar.gz          # or unzip, or git clone
+git clone https://github.com/DoYourLLM/wv_cds.git
 cd wv_cds
 ./install.sh
 ```
 
-It makes the scripts executable, writes this package's location into the three
-files that need an absolute path, checks the prerequisites, and prints the line
-for step 2. Re-run it if you move the folder.
+Using GitHub's **Download ZIP** instead? It unpacks to `wv_cds-main`, so the
+`cd` is different:
+
+```bash
+unzip wv_cds-main.zip
+cd wv_cds-main
+./install.sh
+```
+
+The folder name does not matter - `install.sh` records wherever the package
+actually is. It makes the scripts executable, writes that location into the
+three files that need an absolute path, checks the prerequisites, and prints
+the line for step 2. Re-run it if you move the folder.
 
 **2. Add one line to the `.cdsinit` in the directory you start Virtuoso from**
 

@@ -28,16 +28,26 @@ n 条，都会一起送过去：
 
 ## 安装
 
-**1. 运行一次安装脚本**
+**1. 拿到包，运行一次安装脚本**
 
 ```bash
-tar xf wv_cds.tar.gz          # 或者 unzip，或者 git clone
+git clone https://github.com/DoYourLLM/wv_cds.git
 cd wv_cds
 ./install.sh
 ```
 
-它会加执行权限、把本包的位置写进三个需要绝对路径的文件、检查环境依赖，并打印
-第 2 步要用的那行。以后挪了目录就重跑一次。
+如果是用 GitHub 的 **Download ZIP** 下载的，解压出来叫 `wv_cds-main`，不是
+`wv_cds`：
+
+```bash
+unzip wv_cds-main.zip
+cd wv_cds-main
+./install.sh
+```
+
+目录叫什么名字都无所谓 —— `install.sh` 会记下包实际所在的位置。它会加执行权限、
+把这个位置写进三个需要绝对路径的文件、检查环境依赖，并打印第 2 步要用的那行。
+以后挪了目录就重跑一次。
 
 **2. 往「启动 Virtuoso 的那个目录」里的 `.cdsinit` 加一行**
 
