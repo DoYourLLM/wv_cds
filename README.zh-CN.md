@@ -32,13 +32,19 @@ cd wv_cds
 它会加执行权限、把本包的位置写进三个需要绝对路径的文件、检查环境依赖，并打印
 第 2 步要用的那行。以后挪了目录就重跑一次。
 
-**2. 往 `~/.cdsinit` 里加一行**
+**2. 往「启动 Virtuoso 的那个目录」里的 `.cdsinit` 加一行**
 
 ```skill
 load("/where/you/put/wv_cds/skill/load_wv_cds.il")
 ```
 
-或者把 `skill/cdsinit.wv_cds` 改名成 `cdsinit` 放进项目目录。
+Virtuoso 启动时会读这个文件；没有就新建一个。`install.sh` 会把这一行原样打印给
+你。
+
+（也可以放进 `~/.cdsinit`，但那样会作用于你所有的 Virtuoso session，而不只是这
+个项目。）
+
+或者把 `skill/cdsinit.wv_cds` 改名成 `.cdsinit` 放进那个目录。
 
 **3. 启动 Virtuoso，打开原理图，右键一个 net**
 

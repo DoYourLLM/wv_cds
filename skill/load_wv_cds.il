@@ -1,7 +1,7 @@
 ; load_wv_cds.il - load every wv_cds skill file
 ;
-; Add ONE line to your ~/.cdsinit (install.sh prints it with the real path
-; already filled in):
+; Add ONE line to the .cdsinit in the directory you start Virtuoso from
+; (install.sh prints it with the real path already filled in):
 ;
 ;   load("/path/to/wv_cds/skill/load_wv_cds.il")
 ;

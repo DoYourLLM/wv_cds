@@ -1,12 +1,12 @@
 ; cdsinit.wv_cds - optional project startup file
 ;
-; Virtuoso auto-loads a file named cdsinit or .cdsinit from the startup
-; (project) directory - it does NOT pick this file up under this name. So
-; either
+; Virtuoso auto-loads a .cdsinit from the directory you start it in - it does
+; NOT pick this file up under this name. So either
 ;
-;   - rename this file to cdsinit (or .cdsinit) and put it in your project
+;   - rename this file to .cdsinit and put it in your Virtuoso startup
 ;     directory, or
-;   - copy the single load line below into your existing ~/.cdsinit
+;   - copy the single load line below into the .cdsinit you already have
+;     there
 ;
 ; install.sh fills the placeholder in with this package's real location, and
 ; prints the same line for you to paste.

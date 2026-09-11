@@ -11,7 +11,7 @@
 #      an absolute path - the package ships with placeholders, so nothing
 #      in the distributed copy is machine specific
 #   3. checks the prerequisites
-#   4. prints the one line to add to your .cdsinit
+#   4. prints the one line to add to your startup directory's .cdsinit
 #
 # It is safe to re-run, and you should re-run it after moving the package.
 #====================================================================
@@ -100,8 +100,9 @@ say ""
 # ---------------------------------------------------------------------------
 # 4. what to do next
 # ---------------------------------------------------------------------------
-say "4. next step - add this line to your ~/.cdsinit, or rename"
-say "   skill/cdsinit.wv_cds to cdsinit in your project directory:"
+say "4. next step - add this line to the .cdsinit in the directory you"
+say "   start Virtuoso from (create it if it is not there), or rename"
+say "   skill/cdsinit.wv_cds to .cdsinit and drop it in that directory:"
 say ""
 say "       load(\"$SKILL/load_wv_cds.il\")"
 say ""

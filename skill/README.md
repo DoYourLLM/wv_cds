@@ -14,9 +14,9 @@ The half that runs inside Virtuoso. Package-wide setup:
 | `wv_cds_menu.il` | banner menu `Example > wvcds`, and the selection wrappers |
 | `schRMB.il` | the net right-click menu items |
 
-`cdsinit.wv_cds` is a template: Virtuoso auto-loads a file named `cdsinit` or
-`.cdsinit` from the startup directory, so rename it or copy its single `load`
-line into your own `~/.cdsinit`.
+`cdsinit.wv_cds` is a template: Virtuoso auto-loads a `.cdsinit` from the
+directory you start it in, so rename it to `.cdsinit` there, or copy its single
+`load` line into the `.cdsinit` you already have in that directory.
 
 ## Configuration
 
