@@ -44,24 +44,11 @@ cd wv_cds-main
 ./install.sh
 ```
 
-The folder name does not matter - `install.sh` records wherever the package
-actually is. It makes the scripts executable, writes that location into the
-three files that need an absolute path, checks the prerequisites, and prints
-the line for step 2. Re-run it if you move the folder.
-
 **2. Add one line to the `.cdsinit` in the directory you start Virtuoso from**
 
 ```skill
 load("/where/you/put/wv_cds/skill/load_wv_cds.il")
 ```
-
-Virtuoso reads that file at startup; create it if it is not there. `install.sh`
-prints this exact line for you.
-
-(You can put it in `~/.cdsinit` instead, but that applies to every Virtuoso
-session rather than just this project.)
-
-Or rename `skill/cdsinit.wv_cds` to `.cdsinit` and drop it in that directory.
 
 **3. Start Virtuoso, open a schematic, right-click a net**
 
