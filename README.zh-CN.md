@@ -9,6 +9,13 @@
 | **Send to WV (Direct)** | 直接画到 wv |
 | **Send to WV_CDS** | 把 net 放进一个小 Python 表格；什么时候想画，你再从那里画 |
 
+两个菜单项就在 net 菜单最上面。**按住 Shift 可以一次选中多条 net** —— 一条还是
+n 条，都会一起送过去：
+
+| 选中一条 net | 按住 Shift 选多条 |
+|---|---|
+| ![Wire 菜单：最上面是 Send to WV (Direct) 和 Send to WV_CDS](images/wv-cds-rmb-wire.png) | ![Multiple 菜单：同样两项在最上面](images/wv-cds-rmb-multiple.png) |
+
 两个菜单项都会自己启动需要的东西 —— 你不必手工启动 wv、手工 source
 `wv_rpc_server.tcl`，也不必手工打开 Python GUI。
 

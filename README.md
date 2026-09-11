@@ -9,6 +9,13 @@ Right-click a net in a Virtuoso schematic to plot it in wv:
 | **Send to WV (Direct)** | plots straight in wv |
 | **Send to WV_CDS** | puts the net in a small Python table; you plot from there when you are ready |
 
+The items sit at the top of the net menu. **Shift-click to select several nets
+at once** - one net or n, they are all sent together:
+
+| One net | Several nets (Shift-click) |
+|---|---|
+| ![The Wire menu: Send to WV (Direct) and Send to WV_CDS at the top](images/wv-cds-rmb-wire.png) | ![The Multiple menu: the same two items at the top](images/wv-cds-rmb-multiple.png) |
+
 Both items start whatever they need - you do not have to launch wv, source
 `wv_rpc_server.tcl`, or start the Python GUI by hand.
 
