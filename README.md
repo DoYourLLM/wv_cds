@@ -56,6 +56,12 @@ Select the net(s) first - multi-select and descend-into-subcell both work. The
 two items are at the top of the menu. After loading, the CIW prints
 `wv_cds loaded: ...`.
 
+**4. In wv, open your fsdb**
+
+The first click starts wv for you, but wv comes up with no waveform file open,
+and signal names cannot be resolved until one is. Open your fsdb in wv, then
+click the net again - from then on plots resolve against that file.
+
 ## The Send to WV_CDS flow
 
 ![Right-click a net and pick Send to WV_CDS; the net lands in the GUI table; press Send to WV there](images/wv-cds-send-to-wv-cds.png)
@@ -79,9 +85,8 @@ It runs the same command the right-click items use -
 `wv -ace_gui <package>/wv_rpc_server.tcl` - so the RPC server comes up on 61888
 and Virtuoso can talk to this wv.
 
-Open the waveform file inside wv; plotting resolves against whatever file that
-wv has open, so there is nothing to configure. To have the direct path open a
-fixed file for you instead, set `WV_CDS_FSDB` in `skill/wv_cds_config.il`.
+To have the direct path open a fixed file for you instead of opening it by hand
+(step 4), set `WV_CDS_FSDB` in `skill/wv_cds_config.il`.
 
 ## How it works
 

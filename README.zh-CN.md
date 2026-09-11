@@ -56,6 +56,11 @@ load("/where/you/put/wv_cds/skill/load_wv_cds.il")
 先选中 net —— 多选和 descend 进子单元都可以。两个菜单项在菜单最上面。
 加载后 CIW 会打印 `wv_cds loaded: ...`。
 
+**4. 在 wv 里打开你的 fsdb**
+
+第一次点击会替你启动 wv，但 wv 起来时没有打开任何波形文件，而信号名要对着文件
+才能解析。先在 wv 里打开你的 fsdb，再回去点那个 net —— 之后画图就都用这个文件。
+
 ## Send to WV_CDS 的流程
 
 ![右键一个 net 选 Send to WV_CDS；net 落进 GUI 表格；在那儿按 Send to WV](images/wv-cds-send-to-wv-cds.png)
@@ -78,9 +83,8 @@ wv 起好：
 它跑的就是右键菜单项用的那条命令 —— `wv -ace_gui <package>/wv_rpc_server.tcl`
 —— 所以 RPC server 会在 61888 上起来，Virtuoso 马上能和这个 wv 通信。
 
-在 wv 里打开波形文件；画图按那个 wv 当前打开的文件解析，所以不需要配任何东西。
-如果你更希望 direct 那条路替你打开一个固定文件，在 `skill/wv_cds_config.il`
-里设置 `WV_CDS_FSDB`。
+如果你不想按第 4 步手工打开文件，而是希望 direct 那条路替你打开一个固定文件，
+就在 `skill/wv_cds_config.il` 里设置 `WV_CDS_FSDB`。
 
 ## 工作原理
 
