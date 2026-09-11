@@ -1,0 +1,15 @@
+# Development notes - internal design records, deliberately not published.
+# The package README still lists docs/ as "safe to delete"; it simply will
+# not be in the repository.
+docs/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Logs, editor leftovers, scratch files
+*.log
+*.swp
+*.swo
+*~
+*.tmp

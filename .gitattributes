@@ -1,0 +1,10 @@
+# The shell scripts run on Linux: a CRLF checkout would break the shebang
+# line and the bash /dev/tcp redirections. Force LF in the repository AND in
+# the working tree, so the setting travels with the repository and nobody has
+# to get core.autocrlf right.
+* text=auto eol=lf
+
+# Keep binary files byte exact.
+*.png binary
+*.jpg binary
+*.pdf binary
