@@ -1,3 +1,5 @@
+**English** | [中文](README.zh-CN.md)
+
 # wv_cds — send schematic nets to wv (Custom WaveView)
 
 Right-click a net in a Virtuoso schematic and plot it in wv. Two ways:
@@ -216,5 +218,7 @@ in the Python GUI:  Send to WV --> start_wv.sh -b (bring wv up, wait for the por
 - A net that sits on a pin of the current cellview is the port net, and its
   signal is named one level up: descended two levels, `I0.I1.n1` becomes
   `I0.n1`.
-- Everything is ASCII, and no file in this package contains a machine
-  specific path except the three that `install.sh` fills in.
+- No file in this package contains a machine specific path except the three
+  that `install.sh` fills in, and the code is ASCII apart from em dashes in
+  comments - so nothing here depends on your locale or on where you unpacked
+  it.
