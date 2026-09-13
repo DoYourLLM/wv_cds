@@ -38,14 +38,24 @@ procedure(wvCdsPython()
 ; Add one net probe for the signal name nm, in window win.
 ; Returns the probe object, or nil when nothing was added.
 procedure(wvCdsProbeNet(win nm)
-  prog((path parts r hit x)
+  prog((path parts r hit x mapped)
     hit = nil
     if(stringp(nm)
       then
-        path = ""
-        parts = parseString(nm ".")
-        foreach(x parts
-          path = strcat(path "/" x)
+        ; A device current is not a net. Its probe path - the instance
+        ; terminal, "/I0/I1/R2/PLUS" - was worked out when the terminal was
+        ; selected, because the name sent to wv ("R2:*") carries no terminal
+        ; and so cannot be turned into a path here. See wv_cds_instpin.il.
+        mapped = wvCdsInstProbePath(nm)
+        if(mapped
+          then
+            path = mapped
+          else
+            path = ""
+            parts = parseString(nm ".")
+            foreach(x parts
+              path = strcat(path "/" x)
+            )
         )
         r = errset(geAddNetProbe(win nil path))
         hit = car(r)

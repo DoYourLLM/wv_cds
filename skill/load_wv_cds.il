@@ -13,6 +13,7 @@ let((base)
   base = "@WV_CDS_SKILL_DIR@"
   load(strcat(base "/wv_cds_config.il"))
   load(strcat(base "/wv_cds_ipc.il"))
+  load(strcat(base "/wv_cds_instpin.il"))
   load(strcat(base "/wv_cds_signal.il"))
   load(strcat(base "/wv_cds_probe.il"))
   load(strcat(base "/wv_cds_skill_server.il"))

@@ -9,6 +9,7 @@ The half that runs inside Virtuoso. Package-wide setup:
 |---|---|
 | `wv_cds_config.il` | configuration - the one file you edit |
 | `wv_cds_ipc.il` | IPC bridge, plus the on-demand start of wv and the Python GUI |
+| `wv_cds_instpin.il` | device terminal currents: their names, and their probe paths |
 | `wv_cds_signal.il` | reads the schematic selection and builds the hierarchy path |
 | `wv_cds_probe.il` | probes, in the schematic, the nets wv is displaying |
 | `wv_cds_skill_server.il` | lets the Python GUI send SKILL back into Virtuoso |

@@ -139,6 +139,13 @@ separate ports because two servers cannot share one.
   GUI then logs that no skill server answered, and everything else still works.
   The server exits as soon as Virtuoso does, so the port is released with it
   instead of being held by a leftover process.
+- **Right-clicking a device terminal gives a current, not a voltage.** A
+  terminal on a symbol is named `<hier>.<inst>:*` when the device has two
+  terminals, and `<hier>.<inst>:<n>` when it has three or more, where `n` is
+  the position of that terminal's net in the device's terminal list; a terminal
+  whose net is not in that list is skipped with a warning. Currents are probed
+  at the instance terminal, `/I0/R2/PLUS`, since the name sent to wv carries no
+  terminal. A wire or net is unaffected.
 - wv takes a while to come up, so the first `Send to WV (Direct)` click often
   starts it and skips the plot; click again once it is up.
 - If the GUI's `sh dir` box is empty, **Send to WV** does nothing - it has to

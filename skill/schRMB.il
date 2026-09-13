@@ -59,7 +59,7 @@ procedure(wvCdsRmbAddPair(popMenu)
 
 ; post-install trigger: runs after the schematic editor is initialized
 procedure(CCSinsertPopUp(args)
-  foreach(cat list("wire" "schMultiple")
+  foreach(cat list("wire" "schMultiple" "instPin" "schPin" "symPin")
     let((r popMenu)
       r = errset(schGetPopUpMenu(cat))
       popMenu = when(r car(r))

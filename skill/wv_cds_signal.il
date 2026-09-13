@@ -24,31 +24,46 @@
 ;   descended into I1, select its port net n1 -> I0.n1
 
 procedure(CCSwvPlotSelectedSignals(sch_win)
-  let((r sel names objType nm path pnames pparents pnm cv pins prefix portNet)
+  let((r sel names objType nm path pnames pparents pnm cv pins prefix portNet cur)
     r = errset(geGetSelSet(sch_win))
     sel = when(r car(r))
     names = nil
+    ; the instances that were descended into, e.g. (I0 I1); empty at top
+    r = errset(geGetInstHierPath(sch_win))
+    path = when(r car(r))
+    ; pnames   = every descended instance
+    ; pparents = the same minus the last one, i.e. minus the current level
+    pnames = nil
+    pparents = nil
+    when(path
+      foreach(e path
+        when(listp(e) && e
+          r = errset(car(e)~>name)
+          pnm = when(r car(r))
+          when(pnm
+            ; the list built so far is exactly all-but-the-new-last
+            pparents = pnames
+            pnames = append1(pnames pnm)))))
+    ; the window's cellview: needed for the pin list below, and for the
+    ; object-selected set the device terminals come from
+    r = errset(geGetEditCellView(sch_win))
+    cv = when(r car(r))
+    ; Device terminals are CURRENTS, not voltages. They need different names
+    ; (see wv_cds_instpin.il) and a probe path that cannot be recovered from
+    ; those names afterwards, so it is recorded there as they are built.
+    ;
+    ; Out here, not inside the geGetSelSet loop below: a selected terminal need
+    ; not appear in geGetSelSet at all, and geGetObjectSelectedSet is the call
+    ; that was verified to expose it.
+    when(cv
+      r = errset(geGetObjectSelectedSet(cv))
+      when(r
+        foreach(cur wvCdsInstPinNames(car(r) pnames)
+          unless(member(cur names)
+            names = append1(names cur)))))
     when(sel
-      ; the instances that were descended into, e.g. (I0 I1); empty at top
-      r = errset(geGetInstHierPath(sch_win))
-      path = when(r car(r))
-      ; pnames   = every descended instance
-      ; pparents = the same minus the last one, i.e. minus the current level
-      pnames = nil
-      pparents = nil
-      when(path
-        foreach(e path
-          when(listp(e) && e
-            r = errset(car(e)~>name)
-            pnm = when(r car(r))
-            when(pnm
-              ; the list built so far is exactly all-but-the-new-last
-              pparents = pnames
-              pnames = append1(pnames pnm)))))
       ; pin names of the cellview currently shown in the window
       pins = nil
-      r = errset(geGetEditCellView(sch_win))
-      cv = when(r car(r))
       when(cv
         r = errset(schGetPinOrder(cv))
         pins = when(r car(r)))
