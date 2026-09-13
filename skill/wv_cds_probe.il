@@ -42,19 +42,37 @@ procedure(wvCdsProbeNet(win nm)
     hit = nil
     if(stringp(nm)
       then
-        ; A device current is not a net. Its probe path - the instance
-        ; terminal, "/I0/I1/R2/PLUS" - was worked out when the terminal was
-        ; selected, because the name sent to wv ("R2:*") carries no terminal
-        ; and so cannot be turned into a path here. See wv_cds_instpin.il.
+        ; A device current is not a net. Its probe path is the instance
+        ; terminal, "/I0/I1/R2/PLUS", and it is found in two steps: the table
+        ; wv_cds_instpin.il filled in while the terminal was selected, and -
+        ; when that has nothing, because wv is showing a name this session
+        ; never plotted - the same path worked out from the schematic.
         mapped = wvCdsInstProbePath(nm)
+        unless(mapped
+          ; Not in the table. Either this session never plotted it - a name
+          ; typed into wv by hand, or one left over from an earlier Virtuoso -
+          ; or wv is showing a current under a name of its own. Work the path
+          ; out from the schematic then, the way the reference script does.
+          mapped = wvCdsInstProbePathFromSch(win nm))
         if(mapped
           then
             path = mapped
           else
-            path = ""
-            parts = parseString(nm ".")
-            foreach(x parts
-              path = strcat(path "/" x)
+            if(rexMatchp(":[0-9*]+$" nm)
+              then
+                ; A device current whose path could not be worked out. Sending
+                ; the name on as a path is what produced
+                ; "GE-2133: The object R1:1 does not exist in cellview ...":
+                ; say what really happened rather than ask for a net that
+                ; cannot exist.
+                warn("wvCds: %s looks like a device current, but no probe path for it was found - skipped\n" nm)
+                return(nil)
+              else
+                path = ""
+                parts = parseString(nm ".")
+                foreach(x parts
+                  path = strcat(path "/" x)
+                )
             )
         )
         r = errset(geAddNetProbe(win nil path))
