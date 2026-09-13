@@ -43,15 +43,19 @@ load("/where/you/put/wv_cds/skill/load_wv_cds.il")
 
 **3. Start Virtuoso, open a schematic, right-click a net**
 
+```bash
 Select the net(s) first - multi-select and descend-into-subcell both work. The
 two items are at the top of the menu. After loading, the CIW prints
 `wv_cds loaded: ...`.
+```
 
 **4. In wv, open your fsdb**
 
+```bash
 The first click starts wv for you, but wv comes up with no waveform file open,
 and signal names cannot be resolved until one is. Open your fsdb in wv, then
 click the net again - from then on plots resolve against that file.
+```
 
 ## The Send to WV_CDS (Interactive) flow
 
