@@ -117,51 +117,28 @@ separate ports because two servers cannot share one.
 
 ## Notes
 
-- **A signal is displayed once.** `wv_cds_plot.sh` asks wv itself instead of
-  remembering names: it keeps the line object each display call returned, and
-  probes it on the next click. A line you deleted in wv answers the empty
-  string, so a net that is already on screen is skipped while one whose curve
-  you deleted is plotted again.
-- **`Send to WV (Direct)` also probes.** When the plot is done it asks wv which
-  signals it is still showing - everything this tool has plotted, minus
-  anything you deleted in wv - and puts a net probe on each one in the
-  schematic. It **clears every probe in that window first, including probes you
-  placed by hand yourself**; that is what makes a net you removed from wv lose
-  its probe. If wv does not answer, no probe is touched.
-- **`Send to WV_CDS (Interactive)` probes the same way, in a different order.** There the
-  plotting happens in the Python GUI, which afterwards asks Virtuoso to run the
-  probe step. Virtuoso cannot be called from outside, so the package runs a
-  small local server that hands whatever it receives to Virtuoso, which
-  evaluates it as SKILL (`python/wv_cds_skill_server.py`, itself a port of
-  Cadence's own example). **Anyone who can reach that port can run arbitrary
-  SKILL in your session**, which is why it binds `127.0.0.1` only. Set
-  `WV_CDS_SKILL_SERVER = nil` in `skill/wv_cds_config.il` to switch it off; the
-  GUI then logs that no skill server answered, and everything else still works.
-  The server exits as soon as Virtuoso does, so the port is released with it
-  instead of being held by a leftover process.
-- **Right-clicking a device terminal gives a current, not a voltage.** A
-  terminal on a symbol is named `<hier>.<inst>:*` when the device has two
-  terminals, and `<hier>.<inst>:<n>` when it has three or more, where `n` is
-  the position of that terminal's net in the device's terminal list; a terminal
-  whose net is not in that list is skipped with a warning. A current is probed
-  at its **terminal**, not as a net - asking for the terminal as a net, `/R2:1`,
-  is what makes Virtuoso answer "the object does not exist" - so it gets a
-  terminal probe on the instance terminal it came from, `/I0/R2/PLUS`. That is
-  an ordinary probe: drawn in the probe colours, removed by
-  `geDeleteAllProbe(hiGetCurrentWindow())` together with every other probe, and
-  attached to the object rather than to a pair of coordinates, so it cannot be
-  left behind on the level above when you descend into an instance. Like the net
-  probes, the terminal probes are rebuilt from the list wv reports, so every
-  current wv is still showing stays probed. A wire or net is unaffected.
-- wv takes a while to come up, so the first `Send to WV (Direct)` click often
-  starts it and skips the plot; click again once it is up.
-- If the GUI's `sh dir` box is empty, **Send to WV** does nothing - it has to
-  point at this package.
-- Net names are wrapped in double quotes for the shell and then pasted into a
-  Tcl command, so keep them to ordinary characters: avoid `"`, `$`, backticks,
-  `\`, `{`, `}`, `[`, `]` and whitespace. A name containing `[` or `$` reaches
-  wv as Tcl syntax rather than as a name.
-- A net that sits on a pin of the current cellview is the port net, and its
-  signal is named one level up: `I0.I1.n1` becomes `I0.n1`.
-- No file contains a machine specific path except the three `install.sh` fills
-  in, and the code is ASCII apart from em dashes in comments.
+- **A signal is displayed once.** `wv_cds_plot.sh` asks wv itself, by probing the
+  line object it kept, so a curve you deleted in wv is plotted again.
+- **Both menu items probe, and the Direct one clears every probe in the window
+  first - probes you placed by hand included.** That is what makes a net removed
+  from wv lose its probe. If wv does not answer, nothing is touched.
+- **`Send to WV_CDS (Interactive)` probes in a different order:** the GUI plots,
+  then asks Virtuoso to probe, through a small local server
+  (`python/wv_cds_skill_server.py`). **Anyone who can reach that port can run
+  SKILL in your session**, so it binds `127.0.0.1` only; set
+  `WV_CDS_SKILL_SERVER = nil` to switch it off.
+- **A device terminal gives a current, not a voltage.** It is named
+  `<hier>.<inst>:*` with two terminals and `<hier>.<inst>:<n>` with three or
+  more, and it is probed at its terminal, `/I0/R2/PLUS` - a terminal probe, so
+  `geDeleteAllProbe` removes it like any other probe and it does not follow you
+  into another level.
+- wv takes a while to start: the first `Send to WV (Direct)` click usually only
+  starts it, so click again.
+- The GUI's `sh dir` box has to point at this package, or **Send to WV** does
+  nothing.
+- Keep net names to ordinary characters - avoid `"`, `$`, backticks, `\`, `{`,
+  `}`, `[`, `]` and whitespace: they are pasted into a Tcl command.
+- A net on a pin of the current cellview is the port net, named one level up:
+  `I0.I1.n1` becomes `I0.n1`.
+- No machine specific path except the three `install.sh` fills in, and the code
+  is ASCII apart from em dashes in comments.
