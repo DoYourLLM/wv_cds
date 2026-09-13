@@ -13,3 +13,13 @@ __pycache__/
 *.swo
 *~
 *.tmp
+
+# wv writes its own log wherever it was started from, and rotates it to
+# sxcmd.log.1, .2, ... The header carries the host name, user id and PID, and
+# the body carries absolute paths - none of which belongs in a public repo.
+# Note that *.log above does NOT match sxcmd.log.1.
+sxcmd.log*
+
+# PostScript dumps from wv's print-to-file; they embed the originating path
+# and date. This package ships no .ps files of its own.
+*.ps
