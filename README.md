@@ -137,6 +137,8 @@ separate ports because two servers cannot share one.
   SKILL in your session**, which is why it binds `127.0.0.1` only. Set
   `WV_CDS_SKILL_SERVER = nil` in `skill/wv_cds_config.il` to switch it off; the
   GUI then logs that no skill server answered, and everything else still works.
+  The server exits as soon as Virtuoso does, so the port is released with it
+  instead of being held by a leftover process.
 - wv takes a while to come up, so the first `Send to WV (Direct)` click often
   starts it and skips the plot; click again once it is up.
 - If the GUI's `sh dir` box is empty, **Send to WV** does nothing - it has to

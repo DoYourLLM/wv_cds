@@ -42,8 +42,8 @@ There is no waveform-file setting here: the file is opened inside wv.
 
 1. Select nets in the schematic, right-click, choose **Send to WV_CDS
    (Interactive)** - they appear in the table with their hierarchy path
-2. Or type a name into the entry box and press **Add**; select rows and press
-   **Remove** to drop them
+2. Or type a name into the entry box and press **Add**. **Remove Selected**
+   drops the highlighted rows, **Remove All** empties the table
 3. Press **Send to WV** to plot every row. It runs `start_wv.sh -b` from the sh
    dir first, so wv is up before anything is plotted.
 

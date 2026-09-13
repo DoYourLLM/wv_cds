@@ -128,7 +128,8 @@ skill 和 python 这两半各自的说明见 `skill/README.md`、`python/README.
   （`python/wv_cds_skill_server.py`，照 Cadence 官方示例移植）。**能连上这个端口的人
   就能在你的会话里执行任意 SKILL**，所以它只绑 `127.0.0.1`。要关掉就在
   `skill/wv_cds_config.il` 里设 `WV_CDS_SKILL_SERVER = nil`，那时 GUI 只会记一行
-  "no skill server"，其余功能不受影响。
+  "no skill server"，其余功能不受影响。Virtuoso 一退出，这个服务器就跟着退出，
+  端口随它释放，不会留一个残进程占着。
 - wv 启动要一会儿，所以第一次点 `Send to WV (Direct)` 往往只是把它启动起来、
   画图被跳过；等它起来后再点一次。
 - GUI 的 `sh dir` 框如果空着，**Send to WV** 不会有任何动作 —— 它必须指向本包。

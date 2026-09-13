@@ -65,21 +65,34 @@ def to_virtuoso(line):
 
 def from_virtuoso():
     """Forward '<channel> <result>' lines from SKILL back to the client."""
-    for raw in sys.stdin:
-        line = raw.rstrip("\n")
-        if not line:
-            continue
-        parts = line.split(" ", 1)
-        token = parts[0]
-        result = parts[1] if len(parts) > 1 else ""
-        with _lock:
-            conn = _channels.get(token)
-        if conn is None:
-            continue
-        try:
-            conn.sendall((result + "\n").encode("utf-8", "replace"))
-        except OSError:
-            pass
+    try:
+        for raw in sys.stdin:
+            line = raw.rstrip("\n")
+            if not line:
+                continue
+            parts = line.split(" ", 1)
+            token = parts[0]
+            result = parts[1] if len(parts) > 1 else ""
+            with _lock:
+                conn = _channels.get(token)
+            if conn is None:
+                continue
+            try:
+                conn.sendall((result + "\n").encode("utf-8", "replace"))
+            except OSError:
+                pass
+    except (OSError, ValueError) as exc:
+        log("reading from Virtuoso failed: %s" % exc)
+    # stdin reached EOF, which means the process that spawned us - Virtuoso,
+    # through ipcBeginProcess - has exited. Nothing can be evaluated any more,
+    # so stop: otherwise this process outlives Virtuoso and keeps the port
+    # bound, and the next Virtuoso cannot bind it. The GUI would then talk to
+    # an orphan whose SKILL side is gone and never see an answer.
+    #
+    # os._exit, not sys.exit: this runs on a worker thread, where sys.exit
+    # would only end the thread and leave the process holding the socket.
+    log("Virtuoso is gone - exiting so the port is released")
+    os._exit(0)
 
 
 def serve_client(conn, addr, token):

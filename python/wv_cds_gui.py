@@ -7,7 +7,8 @@ flow of the original SKILL form window (wv_cds_table.il):
   * rows are ADDED by an external signal source - a TCP client sends one
     line per message ("add <name>", or a bare "<name>") to the listener;
   * rows can also be ADDED manually from the entry box + Add button;
-  * rows are REMOVED with the Remove button (uses the table selection);
+  * rows are REMOVED with "Remove Selected" (the table selection) or the whole
+    table is emptied with "Remove All";
   * "Send to WV" plots every name in wv (Custom WaveView) over the plain
     RPC: protocol to 127.0.0.1:61888.
 
@@ -111,8 +112,10 @@ class SignalTableApp:
         # --- Remove + Send to WV buttons
         btns = ttk.Frame(top)
         btns.pack(fill="x", pady=(0, 8))
-        ttk.Button(btns, text="Remove", command=self.remove_selected).pack(
-            side="left")
+        ttk.Button(btns, text="Remove Selected",
+                   command=self.remove_selected).pack(side="left")
+        ttk.Button(btns, text="Remove All",
+                   command=self.remove_all).pack(side="left", padx=(6, 0))
         ttk.Button(btns, text="Send to WV", command=self.send_to_wv).pack(
             side="left", padx=(6, 0))
 
@@ -256,6 +259,16 @@ class SignalTableApp:
         for iid in self.tree.selection():
             self.tree.delete(iid)
 
+    def remove_all(self):
+        """Empty the table.
+
+        No confirmation dialog on purpose: the list is a scratch pad that the
+        right-click item refills in one click, so a dialog would cost more than
+        the mistake it guards against.
+        """
+        for iid in self.tree.get_children():
+            self.tree.delete(iid)
+
     # ------------------------------------------------------- send to wv
     def send_to_wv(self):
         rows = self.tree.get_children()
@@ -353,11 +366,20 @@ class SignalTableApp:
                 sock.sendall(b"wvCdsProbeFromGui()\n")
                 stream = sock.makefile("r", encoding="utf-8", errors="replace")
                 stream.readline()   # reply to the server's connection notice
-                stream.readline()   # reply to our command
+                answer = stream.readline().strip()
         except OSError as exc:
             return ("[skill] no skill server on %s:%d - wv is plotted but the "
                     "schematic probes were not updated (%s)\n"
                     % (cfg.WV_CDS_SKILL_HOST, cfg.WV_CDS_SKILL_PORT, exc))
+        if not answer:
+            # Connected, but nothing came back: the port is being held by a
+            # server whose SKILL side is not there (Virtuoso exited and left a
+            # child behind, or the file failed to load). Without this check the
+            # empty reply would be reported as a successful probe.
+            return ("[skill] the skill server on %s:%d closed without "
+                    "answering - is Virtuoso still running with the package "
+                    "loaded?\n"
+                    % (cfg.WV_CDS_SKILL_HOST, cfg.WV_CDS_SKILL_PORT))
         return ""
 
     def _run_sh(self, sh_dir, script, arg):
