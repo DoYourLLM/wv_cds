@@ -80,10 +80,22 @@ wv1() {
     fi
 
     printf 'RPC:%s\n' "$cmd" >&3
-    if ! IFS= read -r r <&3; then
+    # -t so that a wv which accepts the connection and then says nothing cannot
+    # hang this script. That matters more than it looks: the SKILL caller waits
+    # for this child with an unbounded ipcWait, so a hang here freezes the
+    # Virtuoso UI. Keep the number below the 30s timeout the Python GUI gives a
+    # wv_cds_*.sh it runs, so this message is what the user sees rather than
+    # "the call was killed".
+    IFS= read -t 15 -r r <&3
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
         exec 3<&-
         printf 'refused\n'
-        printf 'wv_cds_plot.sh: wv closed the connection without answering\n' >&2
+        if [ "$rc" -gt 128 ]; then
+            printf 'wv_cds_plot.sh: wv took the connection but did not answer within 15s\n' >&2
+        else
+            printf 'wv_cds_plot.sh: wv closed the connection without answering\n' >&2
+        fi
         return 1
     fi
     # one close is enough; closing the same fd twice is what produced the

@@ -145,8 +145,15 @@ if [ "$BACK" -eq 1 ]; then
     disown 2>/dev/null
     printf 'start_wv: started in the background, log: %s\n' "$LOG"
     printf 'start_wv: waiting for the RPC port'
+    # 300 * 0.2s = up to 60s. This MUST stay in step with WAIT_TRIES in
+    # wv_cds_wv_start.sh: that one serves the right-click items and was raised
+    # to 60s because wv is a large application and 20s is not always enough to
+    # get its RPC port up. The Python GUI runs THIS script, so a shorter wait
+    # here means "Send to WV" gives up - and reports "wv is not up" without
+    # plotting anything - while the right-click path would still have waited.
+    WAIT_TRIES=300
     i=0
-    while [ "$i" -lt 100 ]; do
+    while [ "$i" -lt "$WAIT_TRIES" ]; do
         if port_up "$PORT"; then
             printf ' - listening on %s\n' "$PORT"
             printf 'start_wv: this wv is now the one that receives the plots\n'
@@ -156,7 +163,8 @@ if [ "$BACK" -eq 1 ]; then
         sleep 0.2
         i=$((i + 1))
     done
-    printf '\nstart_wv: the port is still not answering - see %s\n' "$LOG" >&2
+    printf '\nstart_wv: the port is still not answering after %ss - see %s\n' \
+        "$((WAIT_TRIES / 5))" "$LOG" >&2
     exit 1
 fi
 

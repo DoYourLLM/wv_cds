@@ -304,7 +304,12 @@ class SignalTableApp:
         """
         starter = os.path.join(sh_dir, "start_wv.sh")
         if os.path.isfile(starter):
-            rc, out, err = self._run_sh(sh_dir, "start_wv.sh", "-b")
+            # The timeout has to exceed start_wv.sh's own wait, which is 60s
+            # because wv is a large application. At 30s the process would be
+            # killed mid-wait and a perfectly good wv start would be reported
+            # as a failure.
+            rc, out, err = self._run_sh(sh_dir, "start_wv.sh", "-b",
+                                        timeout=90)
             if rc != 0:
                 self.events.put(("log",
                                  self._fmt_result("start wv", rc, out, err)))
@@ -382,7 +387,7 @@ class SignalTableApp:
                     % (cfg.WV_CDS_SKILL_HOST, cfg.WV_CDS_SKILL_PORT))
         return ""
 
-    def _run_sh(self, sh_dir, script, arg):
+    def _run_sh(self, sh_dir, script, arg, timeout=30):
         path = os.path.join(sh_dir, script)
         try:
             # stdout/stderr=PIPE + universal_newlines keeps this working on
@@ -390,7 +395,7 @@ class SignalTableApp:
             proc = subprocess.run(["/bin/bash", path, arg],
                                   stdout=subprocess.PIPE,
                                   stderr=subprocess.PIPE,
-                                  universal_newlines=True, timeout=30)
+                                  universal_newlines=True, timeout=timeout)
             return proc.returncode, proc.stdout, proc.stderr
         except Exception as e:  # report any launch failure (missing bash, ...)
             return -1, "", str(e)

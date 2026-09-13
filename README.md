@@ -143,8 +143,10 @@ separate ports because two servers cannot share one.
   starts it and skips the plot; click again once it is up.
 - If the GUI's `sh dir` box is empty, **Send to WV** does nothing - it has to
   point at this package.
-- Net names are wrapped in double quotes for the shell, so avoid names
-  containing `"`, `$` or backticks.
+- Net names are wrapped in double quotes for the shell and then pasted into a
+  Tcl command, so keep them to ordinary characters: avoid `"`, `$`, backticks,
+  `\`, `{`, `}`, `[`, `]` and whitespace. A name containing `[` or `$` reaches
+  wv as Tcl syntax rather than as a name.
 - A net that sits on a pin of the current cellview is the port net, and its
   signal is named one level up: `I0.I1.n1` becomes `I0.n1`.
 - No file contains a machine specific path except the three `install.sh` fills

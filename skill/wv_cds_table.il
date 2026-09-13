@@ -27,13 +27,19 @@ procedure(wvCdsAdd(form)
       lb1Choices = form->lb1->choices
       form->lb1->choices = append(lb1Choices signals))))
 
-; Remove: take the selection inside lb1 out of the list
+; Remove: take everything selected inside lb1 out of the list.
+; A loop, not car: the list box allows a multi-selection, and taking only the
+; first value meant several highlighted nets needed one click each (the Python
+; GUI's Remove Selected drops them all, so the two felt different for no
+; reason).
 procedure(wvCdsRemove(form)
   let((lb1Value lb1Choices)
     lb1Value = form->lb1->value
     when(lb1Value
       lb1Choices = form->lb1->choices
-      form->lb1->choices = remove(car(lb1Value) lb1Choices))))
+      foreach(v lb1Value
+        lb1Choices = remove(v lb1Choices))
+      form->lb1->choices = lb1Choices)))
 
 ; build the form fresh every time (no dock, no nesting).
 ; The buttons are hiCreateButtonBoxField, exactly like the working

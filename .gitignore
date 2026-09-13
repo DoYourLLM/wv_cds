@@ -23,3 +23,13 @@ sxcmd.log*
 # PostScript dumps from wv's print-to-file; they embed the originating path
 # and date. This package ships no .ps files of its own.
 *.ps
+
+# Screen recordings. A capture of a working session shows a real schematic -
+# net names, block names, possibly PDK and customer data - none of which the
+# READMEs reference or the package needs. Kept out by default so that a
+# "git add -A" cannot publish 25 MB of someone's design. If a demo really
+# should ship, review the frames first and force-add it.
+*.mp4
+*.mov
+*.mkv
+video/

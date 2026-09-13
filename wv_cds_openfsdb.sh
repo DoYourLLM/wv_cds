@@ -36,10 +36,18 @@ wv1() {
     fi
 
     printf 'RPC:%s\n' "$payload" >&3
-    if ! IFS= read -r r <&3; then
+    # bounded read; see the note in wv_cds_plot.sh - an unbounded wait here
+    # becomes an unbounded ipcWait in the SKILL caller, which freezes Virtuoso
+    IFS= read -t 15 -r r <&3
+    rc=$?
+    if [ "$rc" -ne 0 ]; then
         exec 3<&-
         printf 'refused\n'
-        printf 'wv_cds_openfsdb.sh: wv closed the connection without answering\n' >&2
+        if [ "$rc" -gt 128 ]; then
+            printf 'wv_cds_openfsdb.sh: wv took the connection but did not answer within 15s\n' >&2
+        else
+            printf 'wv_cds_openfsdb.sh: wv closed the connection without answering\n' >&2
+        fi
         return 1
     fi
     exec 3<&-

@@ -18,10 +18,19 @@
 procedure(runSyncIPC(cmd)
   let((cid val)
     cid = ipcBeginProcess(cmd)
-    ipcWait(cid)
+    ; Bounded on purpose. The scripts bound their own socket reads (read -t
+    ; 15), so a child should always finish well inside this, but ipcWait with
+    ; no timeout blocks the Virtuoso UI for as long as the child lives - and a
+    ; child that never exits would freeze the session. 5s between messages,
+    ; 60s in total; anything still alive after that is killed.
+    errset(ipcWait(cid 5 60))
+    when(ipcIsAliveProcess(cid)
+      errset(ipcKillProcess(cid)))
     val = ipcReadProcess(cid 20)
     errset(ipcCloseProcess(cid))
-    parseString(val)))
+    ; parseString needs a string; a killed child can leave val nil, and the
+    ; callers treat nil as "no answer", which is right
+    parseString(if(val val ""))))
 
 ; Session state of the lazy steps below. Declared once here so the guards
 ; can always read them - reading a global that was never assigned raises
