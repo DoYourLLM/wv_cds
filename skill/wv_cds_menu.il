@@ -24,17 +24,25 @@ procedure(wvCdsSendSelectionToGui()
 ; minus anything you deleted in wv), and every one of those names is probed.
 ; wvCdsDisplayedNames returns nil when wv did not answer, and then the probes
 ; are deliberately left alone instead of being cleared.
+;
+; The probe step is skipped entirely when nothing was selected. wvCdsSendToWv
+; has already warned about that, and without this guard a right-click on empty
+; canvas would still clear the probes you had placed by hand.
 procedure(wvCdsSendSelectionDirect()
   let((signals names)
     sch_win = hiGetCurrentWindow()
     signals = CCSwvPlotSelectedSignals(sch_win)
     wvCdsSendToWv(signals)
-    names = wvCdsDisplayedNames()
-    if(names
+    if(signals
       then
-        wvCdsProbeNames(sch_win cdr(names))
-      else
-        warn("wvCds: wv did not answer - probes left as they were\n"))))
+        names = wvCdsDisplayedNames()
+        if(names
+          then
+            wvCdsProbeNames(sch_win cdr(names))
+          else
+            warn("wvCds: wv did not answer - probes left as they were\n")
+        )
+    )))
 
 procedure(wvCdsBuildPulldownMenu()
   sch_win=hiGetCurrentWindow()

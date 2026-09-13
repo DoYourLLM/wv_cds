@@ -73,18 +73,21 @@ procedure(wvCdsProbeNames(win names)
         warn("wvCds: no schematic window - nothing probed\n")
         return(n)
     )
-    if(names == nil
-      then
-        printf("wvCds: nothing to probe - wv reported no signals\n")
-        return(n)
-    )
+    ; names may be nil, and that is NOT "do nothing". The caller only reaches
+    ; this point when wv answered, so an empty list means every signal this
+    ; tool plotted is gone from wv - and then every probe here goes too.
+    ;
+    ; An early return used to sit here and made "you deleted everything in wv"
+    ; behave exactly like "wv never answered": the probes stayed. The count
+    ; prefix exists to keep those two apart in the caller; collapsing them
+    ; again in here threw that away.
     errset(geDeleteAllProbe(win))
     foreach(nm names
       if(wvCdsProbeNet(win nm)
         then n = n + 1
       )
     )
-    printf("wvCds: probed %d of %d net(s) in the schematic\n"
+    printf("wvCds: cleared the window, then probed %d of %d net(s)\n"
            n length(names))
     return(n)
   )
