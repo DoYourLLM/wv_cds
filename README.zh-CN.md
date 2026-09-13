@@ -132,13 +132,13 @@ skill 和 python 这两半各自的说明见 `skill/README.md`、`python/README.
   端口随它释放，不会留一个残进程占着。
 - **右键器件端子画的是电流，不是电压。** 符号上的端子，两个端子时名字是
   `<层次>.<inst>:*`；三个及以上时是 `<层次>.<inst>:<n>`，n 是该端子的 net 在器件
-  端子表里的位置；net 不在表里的端子会被跳过并 warn 一行。电流**不加 probe**——
-  原理图的 probe 是 net，把端子名当 net 递过去（`/R2:1`）就会得到 "the object
-  does not exist"；改成在原理图里高亮那个端子的 figure 本身，CIW 里同时打印它
-  对应的实例端子路径（`/I0/R2/PLUS`）。标记是**按 wv 报回来的列表重建的**，和
-  net probe 同一轮：wv 里还留着哪个电流，那个端子就一直标着；你在 wv 里删掉曲线，
-  标记也跟着消失。wv 里有、但本次会话没发过的电流没有记录 figure，只会计数、
-  不会标。net / 导线不受影响，照旧 probe。
+  端子表里的位置；net 不在表里的端子会被跳过并 warn 一行。电流 probe 在**端子**上，
+  不是当 net —— 把电流名当 net 递过去（`/R2:1`）就会得到 "the object does not
+  exist"；它拿到的是一个 terminal probe，打在来源端子 `/I0/R2/PLUS` 上。这就是普通
+  的 probe：用 probe 的配色画在保留层上，`geDeleteAllProbe(hiGetCurrentWindow())`
+  能和其他 probe 一起删掉，而且它挂在被探的对象上而不是坐标上，所以进下层不会残留在
+  上一层。和 net probe 一样，它是按 wv 报回的列表重建的，wv 里还留着的电流就一直有
+  probe。net / 导线不受影响。
 - wv 启动要一会儿，所以第一次点 `Send to WV (Direct)` 往往只是把它启动起来、
   画图被跳过；等它起来后再点一次。
 - GUI 的 `sh dir` 框如果空着，**Send to WV** 不会有任何动作 —— 它必须指向本包。

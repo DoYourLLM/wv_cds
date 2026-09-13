@@ -1,96 +1,59 @@
-; wv_cds_termtest.il - where does the terminal marker actually land?
+; wv_cds_termtest.il - does this Cadence take the terminal probe path?
 ;
-; A standalone check, NOT loaded by load_wv_cds.il. Paste it in the CIW with
+; Standalone, NOT loaded by load_wv_cds.il. Paste it in the CIW with
+;
 ;     load("<the package>/skill/wv_cds_termtest.il")
+;
 ; then, with one device terminal selected in the schematic:
+;
 ;     wvTestTerminal()
 ;
-; It draws two circles and prints the numbers behind them:
+; It prints the wv name and the instance terminal path wv_cds_instpin.il works
+; out for that selection, and then calls the two probes the marker is built
+; from, to see which one this build accepts:
 ;
-;   small  - where wv_cds_instpin.il draws its marker: the middle of the
-;            selected figure, converted out of the instance's coordinate system
-;            into the schematic's
-;   big    - around the point you clicked, which is ground truth: the editor
-;            reports that one in displayed coordinates already
+;     geAddTermProbe( win nil "/R1/PLUS" )
+;     geAddInstProbe( win nil "/R1/PLUS" )
 ;
-; Concentric circles mean the marker is placed correctly. If they are not, the
-; two printed deltas say by how much and in which direction each candidate is
-; off, which is what decides between "the figure bbox is in the instance's
-; coordinates" and "it is in the schematic's".
+; Both are ordinary probes. The schematic draws them in the probe colour on one
+; of the reserved layers y0..y9, they are cleared by
+; geDeleteAllProbe(hiGetCurrentWindow()) along with every other probe, and being
+; attached to the object instead of to coordinates they cannot be left behind on
+; another level.
 ;
-; Each run ADDS its circles and leaves the earlier ones in place, so several
-; terminals can be checked one after another - the line at the top of the
-; output says how many are drawn. wvTestTermClear() removes all of them.
-; Nothing here talks to wv, and nothing here changes any file.
+; wvTestTermClear() removes the probes this test made and nothing else.
 ;
 ; Checked against the IC23.1 SKILL Reference:
 ;   hiGetCurrentWindow()  geGetEditCellView( [w_windowId] )
-;   hiGetCommandPoint( [w_windowId] [g_dontAdjust] )
-;   schGetEnv( t_variableName )  geGetObjectSelectedSet( [ d_cellview ] )
-;   dbGetInstTransform( l_dbInstId )  dbTransformPoint( l_point l_list )
-;   geCreateHilightSet( d_cellview l_layerPurposePair [ g_notGlobal ] )
-;   geAddHilightEllipse( g_hlSetId l_bBox )  geDeleteHilightSet( g_hlSetId )
+;   geGetObjectSelectedSet( [ d_cellview ] )
+;   geAddTermProbe( [w_windowId] [l_lpp] [lt_probeSpec] )
+;   geAddInstProbe( [w_windowId] [l_lpp] [lt_probeSpec] )
+;   geDeleteProbe( w_windowId o_userType [g_crossProbeFlag] )
 ;
 ; Verified with:
 ;   check_new_functions.py wv_cds_termtest.il --strict \
-;     --allow wvCdsInstPinName,wvCdsInstMarkBox
+;     --allow wvCdsInstPinName,wvCdsInstProbePath
 ;   (they are in wv_cds_instpin.il, so the checker cannot see them from here)
-;
-; One arity warning is a known false positive of the argument counting:
-;   errset "3 of 2" - the call is errset(set->enable = t), one argument, but
-;                    the counter splits an assignment into "set->enable",
-;                    "=" and "t"
 
-; the highlight sets this test created, so wvTestTermClear can delete exactly
-; those and leave the user's own highlights alone
-unless(boundp('wvTestTermSets)
-  wvTestTermSets = nil)
-
-; one circle of radius r around the point c, in its own highlight set.
-; Created on the cellview and drawn at the point the package works out, exactly
-; as wv_cds_instpin.il marks a terminal.
-procedure(wvTestTermCircle(cv c r)
-  let((set)
-    set = car(errset(geCreateHilightSet(cv list("hilite" "drawing1") nil)))
-    when(set
-      errset(set->enable = t)
-      errset(geAddHilightEllipse(set
-        list(list(car(c) - r car(cdr(c)) - r)
-             list(car(c) + r car(cdr(c)) + r))))
-      wvTestTermSets = cons(set wvTestTermSets))
-    set))
+; the probes this test created, so wvTestTermClear deletes exactly those
+unless(boundp('wvTestTermProbes)
+  wvTestTermProbes = nil)
 
 procedure(wvTestTermClear()
-  foreach(s wvTestTermSets
-    errset(geDeleteHilightSet(s)))
-  wvTestTermSets = nil
-  printf("wvTestTerm: circles cleared\n"))
-
-; middle of a list of two points
-procedure(wvTestTermCentre(bBox)
-  let((ll ur)
-    ll = car(bBox)
-    ur = car(cdr(bBox))
-    when(ll && ur
-      list((car(ll) + car(ur)) / 2
-           (car(cdr(ll)) + car(cdr(ur))) / 2))))
-
-; a - b, as a point, for reading off a printed delta
-procedure(wvTestTermDelta(a b)
-  list(car(a) - car(b) car(cdr(a)) - car(cdr(b))))
+  let((win)
+    win = hiGetCurrentWindow()
+    foreach(p wvTestTermProbes
+      errset(geDeleteProbe(win p)))
+    wvTestTermProbes = nil
+    printf("wvTestTerm: test probes removed\n")))
 
 procedure(wvTestTerminal()
-  let((win cv pt grid sel g fig inst hier b c c2 xform r)
+  let((win cv sel g fig inst net instName sigs nm path r p)
     win = hiGetCurrentWindow()
     cv = geGetEditCellView(win)
-    grid = schGetEnv("schSnapSpacing")
-    pt = hiGetCommandPoint(win)
-    printf("\n=== wv_cds terminal test ===\n")
-    printf("circles drawn : %d from earlier picks - wvTestTermClear() removes them\n"
-           length(wvTestTermSets))
+    wvTestTermClear()
+    printf("\n=== wv_cds terminal probe test ===\n")
     printf("cellview      : %L\n" cv)
-    printf("snap spacing  : %L\n" grid)
-    printf("click point   : %L\n" pt)
     sel = car(errset(geGetObjectSelectedSet(cv)))
     if(!sel
       then
@@ -98,54 +61,42 @@ procedure(wvTestTerminal()
       else
         foreach(g sel
           fig = car(g)
-          hier = car(cdr(g))
           inst = car(car(car(cdr(g))))
+          net = car(errset(fig~>pin~>net~>name))
+          instName = car(errset(inst~>baseName))
+          sigs = car(errset(inst~>master~>sigNames))
           printf("\n-- one selected object --\n")
-          printf("figure        : %L  objType %L\n"
-                 fig car(errset(fig~>objType)))
-          printf("hierarchy path: %L\n" hier)
-          printf("instance      : %L  name %L\n"
-                 inst car(errset(inst~>name)))
-          printf("pin net       : %L\n"
-                 car(errset(fig~>pin~>net~>name)))
-          printf("figure bBox   : %L\n" car(errset(fig~>bBox)))
-          printf("instance bBox : %L\n" car(errset(inst~>bBox)))
-          b = car(errset(fig~>bBox))
-          c = wvTestTermCentre(b)
-          printf("figure centre : %L\n" c)
-          xform = car(errset(dbGetInstTransform(mapcar('car hier))))
-          printf("transform     : %L\n" xform)
-          c2 = car(errset(dbTransformPoint(c xform)))
-          printf("transformed   : %L\n" c2)
-          when(c && pt
-            printf("delta raw     : %L\n" wvTestTermDelta(c pt)))
-          when(c2 && pt
-            printf("delta xform   : %L\n" wvTestTermDelta(c2 pt)))
-          ; what the package itself works out for this terminal, when it is
-          ; loaded - the small circle below is drawn where that box says
-          if(boundp('wvCdsInstMarkBox)
-            then
-              printf("package box   : %L\n" wvCdsInstMarkBox(fig hier))
-            else
-              printf("package box   : wv_cds_instpin.il is not loaded\n"))
-          ; which name wv_cds_instpin.il would send for this terminal
+          printf("figure        : %L\n" fig)
+          printf("instance      : %L\n" instName)
+          printf("terminal net  : %L\n" net)
+          printf("term names    : %L\n" sigs)
+          ; what the package works out from the same selection
+          path = nil
           if(boundp('wvCdsInstPinName)
             then
-              printf("package name  : %L\n" wvCdsInstPinName(g nil))
+              nm = wvCdsInstPinName(g nil)
+              printf("package name  : %L\n" nm)
+              path = wvCdsInstProbePath(nm)
             else
               printf("package name  : wv_cds_instpin.il is not loaded\n"))
-          r = 1.5 * grid
-          when(grid && c2
-            ; small: where the marker code puts it
-            wvTestTermCircle(cv c2 r))
-          r = 4.5 * grid
-          when(grid && pt
-            ; big: around the click, three times as wide
-            wvTestTermCircle(cv pt r))
+          unless(path
+            ; the top level form, for when the package is not loaded
+            path = strcat("/" instName "/" net))
+          printf("path tried    : %L\n" path)
+          r = errset(geAddTermProbe(win nil path))
+          p = when(r car(r))
+          printf("geAddTermProbe: %L\n" p)
+          when(p
+            wvTestTermProbes = cons(p wvTestTermProbes))
+          r = errset(geAddInstProbe(win nil path))
+          p = when(r car(r))
+          printf("geAddInstProbe: %L\n" p)
+          when(p
+            wvTestTermProbes = cons(p wvTestTermProbes))
         )
     )
-    printf("=== end: %d circle set(s) drawn, wvTestTermClear() removes them ===\n"
-           length(wvTestTermSets))
+    printf("=== end: %d added, wvTestTermClear() removes them ===\n"
+           length(wvTestTermProbes))
   ))
 
 printf("wv_cds_termtest.il loaded - wvTestTerminal() with a terminal selected\n")

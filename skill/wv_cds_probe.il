@@ -10,12 +10,12 @@
 ; in the format of /instname/instname/.../objectName" - while the names coming
 ; out of wv use the dotted form (I0.n1), so wvCdsProbeNet converts.
 ;
-; Device currents arrive in the same list and are NOT probed: geAddNetProbe
+; Device currents arrive in the same list and are NOT net probes: geAddNetProbe
 ; wants a net, and sending "R1:1" on as a path is what produced
-; "GE-2133: The object R1:1 does not exist in cellview". They are marked in the
-; schematic instead, from this same list and in this same round, so a current
-; still in wv stays marked and one deleted in wv loses its marker
-; (wvCdsInstMarkShow, in wv_cds_instpin.il).
+; "GE-2133: The object R1:1 does not exist in cellview". Each current gets a
+; TERMINAL probe on the terminal it came from instead - an ordinary probe, drawn
+; on the reserved probe layers, cleared by geDeleteAllProbe with all the others
+; (wvCdsInstProbeAdd, in wv_cds_instpin.il).
 ;
 ; Checked against the IC23.1 SKILL Reference (skdfref):
 ;   geAddNetProbe( [w_windowId] [l_lpp] [lt_probeSpec] ) => o_probe
@@ -90,21 +90,25 @@ procedure(wvCdsProbeNames(win names)
     ; again in here threw that away.
     errset(geDeleteAllProbe(win))
     foreach(nm names
-      ; wv reports currents and nets in one list. Only the nets get a probe: a
-      ; current is not a net, and it is marked in the schematic instead - from
-      ; this same list, so that a current still in wv stays marked and one you
-      ; deleted in wv loses its marker.
+      ; wv reports currents and nets in one list, and each gets the probe that
+      ; fits it: a net probe for a net, a terminal probe for a device current
+      ; (wvCdsInstProbeAdd). Both are ordinary probes, so this one
+      ; geDeleteAllProbe above clears them both, and both are rebuilt from this
+      ; list - a signal still in wv keeps its probe, one you deleted in wv loses
+      ; it.
       if(wvCdsIsCurrent(win nm)
-        then ncur = ncur + 1
+        then
+          ncur = ncur + 1
+          if(wvCdsInstProbeAdd(win nm)
+            then nmark = nmark + 1)
         else
           if(wvCdsProbeNet(win nm)
             then n = n + 1
           )
       )
     )
-    nmark = wvCdsInstMarkShow(win names)
-    printf("wvCds: cleared the window, then probed %d of %d signal(s) and marked %d of %d current(s)\n"
-           n length(names) nmark ncur)
+    printf("wvCds: cleared the window, then probed %d net(s) and %d of %d current(s)\n"
+           n nmark ncur)
     return(n)
   )
 )

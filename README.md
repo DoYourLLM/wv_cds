@@ -143,16 +143,16 @@ separate ports because two servers cannot share one.
   terminal on a symbol is named `<hier>.<inst>:*` when the device has two
   terminals, and `<hier>.<inst>:<n>` when it has three or more, where `n` is
   the position of that terminal's net in the device's terminal list; a terminal
-  whose net is not in that list is skipped with a warning. A current is **not
-  probed** - a schematic probe is a net, and asking for the terminal as a net,
-  `/R2:1`, is what makes Virtuoso answer "the object does not exist" - so the
-  terminal's own figure is highlighted in the schematic instead, and the CIW
-  says which instance-terminal path it came from (`/I0/R2/PLUS`). The markers
-  are rebuilt from the list wv reports, in the same round that re-probes the
-  nets: every current wv is still showing stays marked, and one you delete in wv
-  loses its marker, exactly like the probes. A current wv holds that this
-  session never sent has no figure recorded, so it is counted but not marked. A
-  wire or net is unaffected and still gets a probe.
+  whose net is not in that list is skipped with a warning. A current is probed
+  at its **terminal**, not as a net - asking for the terminal as a net, `/R2:1`,
+  is what makes Virtuoso answer "the object does not exist" - so it gets a
+  terminal probe on the instance terminal it came from, `/I0/R2/PLUS`. That is
+  an ordinary probe: drawn in the probe colours, removed by
+  `geDeleteAllProbe(hiGetCurrentWindow())` together with every other probe, and
+  attached to the object rather than to a pair of coordinates, so it cannot be
+  left behind on the level above when you descend into an instance. Like the net
+  probes, the terminal probes are rebuilt from the list wv reports, so every
+  current wv is still showing stays probed. A wire or net is unaffected.
 - wv takes a while to come up, so the first `Send to WV (Direct)` click often
   starts it and skips the plot; click again once it is up.
 - If the GUI's `sh dir` box is empty, **Send to WV** does nothing - it has to
