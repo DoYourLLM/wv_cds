@@ -59,11 +59,11 @@
 ;   geGetObjectSelectedSet( [ d_cellview ] )
 ;   makeTable( S_name [ g_default_value ] )   arrayref( g_collection g_index )
 ;   buildString( l_strings [ S_glueCharacters ] )   append1( l_list g_arg )
-;   geCreateWindowHilightSet( w_windowId l_layerPurposePair [ g_notGlobal ] )
+;   geCreateHilightSet( d_cellview l_layerPurposePair [ g_notGlobal ] )
 ;   geAddHilightEllipse( g_hlSetId l_bBox )  geDrawHilightSet( [w] [set] )
 ;   geDeleteHilightSet( g_hlSetId )  geIsValidHilightSet( h_hlSetId )
 ;   dbGetInstTransform( l_dbInstId )  dbTransformPoint( l_point l_list )
-;   geEditToWindowPoint( w_windowId l_editCellViewPoint )  hiRedraw( [w] )
+;   hiRedraw( [ w_window ] )
 ;   schGetEnv( t_variableName )  mapcar( u_func l_arg1 ... )
 ;
 ; Verified with:
@@ -205,17 +205,11 @@ procedure(wvCdsIsCurrent(win nm)
 
 ; Every highlight set these markers have been drawn in, NOT just the last one.
 ;
-; The sets are created ON THE WINDOW (geCreateWindowHilightSet) and not on the
-; cellview, because the coordinates are the window's: the marker box comes out
-; of wvCdsInstMarkBox in displayed coordinates. A cellview set, in contrast,
-; belongs to the cellview it was made in, and a window shows a different
-; cellview once the user edits in place - so a circle made at the top level
-; would be drawn from that cellview's coordinates while a sub-cellview is on
-; screen, which is a circle left behind on nothing.
-;
-; Keeping only the newest set made that worse: the older one could never be
-; found again to delete. A set whose delete does not go through stays on the
-; list and is retried on the next round.
+; A set belongs to the cellview it was created in, and a schematic window shows
+; a different cellview once the user edits in place. Keeping only the newest set
+; meant an older one could never be found again to delete, so a circle made at
+; the top level stayed on screen while a sub-cellview was being edited. Keeping
+; them all, and retrying the deletes, is what clears it - see wvCdsInstHlDrop.
 unless(boundp('wvCdsInstHlSets)
   wvCdsInstHlSets = nil)
 
@@ -256,18 +250,10 @@ procedure(wvCdsInstHlDrop()
 ; dbTransformPoint applies it, which is the reference's own example: how "a
 ; certain shape (such as a pin on the master) in an instance of a cell is
 ; repositioned". With no path to walk (a figure already at the top level) there
-; is nothing to convert.
-;
-; That leaves the point in the coordinates of the CELLVIEW BEING EDITED, and
-; when the window is descended into an instance that is not what the drawing
-; functions take: geWindowToEditPoint's reference says the two systems differ
-; exactly there - "geWindowToEditPoint applies the top-level cellview's
-; coordinates to the cellview being edited; geEditToWindowPoint does the
-; reverse". Without that last step the marker for a terminal inside the
-; sub-schematic lands one edit-in-place transform away from the terminal.
+; is nothing to convert, and the box is used as it comes.
 ;
 ; nil when the figure has no bbox to mark.
-procedure(wvCdsInstMarkBox(win fig hierPath)
+procedure(wvCdsInstMarkBox(fig hierPath)
   let((bBox xform ll ur c w g h dw dh box)
     box = nil
     bBox = car(errset(fig~>bBox))
@@ -282,9 +268,6 @@ procedure(wvCdsInstMarkBox(win fig hierPath)
         w = car(errset(dbTransformPoint(c xform)))
         when(w
           c = w))
-      w = car(errset(geEditToWindowPoint(win c)))
-      when(w
-        c = w)
       when(c
         ; the size does not depend on the frame, so it is taken from the shape
         dw = (car(ur) - car(ll)) / 2
@@ -322,24 +305,32 @@ procedure(wvCdsInstMarkBox(win fig hierPath)
 ; wvCdsInstHlSets. A round with no currents still deletes, so markers never
 ; outlive the curves they belong to.
 ;
-; geCreateWindowHilightSet takes the window and not a cellview, which is what
-; the displayed coordinates of wvCdsInstMarkBox are for, and it returns a
-; DISABLED set, and the reference says the window has to be refreshed before the
-; objects are visible - hence the enable, the geDrawHilightSet and the hiRedraw
-; at the end, without which a circle that has just been deleted keeps being
-; painted.
+; The set is created on the CELLVIEW being edited, the way the reference script
+; does it. A window highlight set (geCreateWindowHilightSet) was tried here as
+; well, on the reasoning that the ellipse is in displayed coordinates - it drew
+; something the user did not recognise as a marker at all, so it is not used.
+; The same goes for geEditToWindowPoint, the edit-to-window conversion that was
+; added for the descended case: with it the marker moved further off, not
+; closer, so the conversion wvCdsInstMarkBox does is the whole of it.
+;
+; geCreateHilightSet wants a cellview that is displayed in a window, and returns
+; a DISABLED set, and the reference says the window has to be refreshed before
+; the objects are visible - hence the enable, the geDrawHilightSet and the
+; hiRedraw at the end, without which a circle that has just been deleted keeps
+; being painted.
 ;
 ; Returns how many were marked. A name wv is showing that this session never
 ; sent has no figure recorded for it, and a figure with no bbox cannot be drawn:
 ; both are counted as currents but not marked.
 procedure(wvCdsInstMarkShow(win names)
-  let((r set n lpp e nm box)
+  let((r cv set n lpp e nm box)
     ; the layer the reference script marks with
     lpp = list("hilite" "drawing1")
     wvCdsInstHlDrop()
     n = 0
-    when(win
-      r = errset(geCreateWindowHilightSet(win lpp nil))
+    cv = car(errset(geGetEditCellView(win)))
+    when(cv
+      r = errset(geCreateHilightSet(cv lpp nil))
       set = when(r car(r))
       when(set
         wvCdsInstHlSets = cons(set wvCdsInstHlSets)
@@ -347,7 +338,7 @@ procedure(wvCdsInstMarkShow(win names)
         foreach(nm names
           e = wvCdsInstMarkOf(nm)
           when(e
-            box = wvCdsInstMarkBox(win car(e) car(cdr(e)))
+            box = wvCdsInstMarkBox(car(e) car(cdr(e)))
             when(box
               when(car(errset(geAddHilightEllipse(set box)))
                 n = n + 1))))

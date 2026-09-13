@@ -28,8 +28,7 @@
 ;   hiGetCommandPoint( [w_windowId] [g_dontAdjust] )
 ;   schGetEnv( t_variableName )  geGetObjectSelectedSet( [ d_cellview ] )
 ;   dbGetInstTransform( l_dbInstId )  dbTransformPoint( l_point l_list )
-;   geEditToWindowPoint( w_windowId l_editCellViewPoint )
-;   geCreateWindowHilightSet( w_windowId l_layerPurposePair [ g_notGlobal ] )
+;   geCreateHilightSet( d_cellview l_layerPurposePair [ g_notGlobal ] )
 ;   geAddHilightEllipse( g_hlSetId l_bBox )  geDeleteHilightSet( g_hlSetId )
 ;
 ; Verified with:
@@ -48,11 +47,11 @@ unless(boundp('wvTestTermSets)
   wvTestTermSets = nil)
 
 ; one circle of radius r around the point c, in its own highlight set.
-; The set is created ON THE WINDOW, exactly as wv_cds_instpin.il does, because
-; the point is in the window's coordinates.
-procedure(wvTestTermCircle(win c r)
+; Created on the cellview and drawn at the point the package works out, exactly
+; as wv_cds_instpin.il marks a terminal.
+procedure(wvTestTermCircle(cv c r)
   let((set)
-    set = car(errset(geCreateWindowHilightSet(win list("hilite" "drawing1") nil)))
+    set = car(errset(geCreateHilightSet(cv list("hilite" "drawing1") nil)))
     when(set
       errset(set->enable = t)
       errset(geAddHilightEllipse(set
@@ -81,7 +80,7 @@ procedure(wvTestTermDelta(a b)
   list(car(a) - car(b) car(cdr(a)) - car(cdr(b))))
 
 procedure(wvTestTerminal()
-  let((win cv pt grid sel g fig inst hier b c c2 c3 xform r)
+  let((win cv pt grid sel g fig inst hier b c c2 xform r)
     win = hiGetCurrentWindow()
     cv = geGetEditCellView(win)
     grid = schGetEnv("schSnapSpacing")
@@ -118,12 +117,6 @@ procedure(wvTestTerminal()
           printf("transform     : %L\n" xform)
           c2 = car(errset(dbTransformPoint(c xform)))
           printf("transformed   : %L\n" c2)
-          ; and out of the cellview being edited, if the window is descended:
-          ; the drawing functions take the window's coordinates
-          c3 = car(errset(geEditToWindowPoint(win c2)))
-          printf("to window     : %L\n" c3)
-          when(c3
-            c2 = c3)
           when(c && pt
             printf("delta raw     : %L\n" wvTestTermDelta(c pt)))
           when(c2 && pt
@@ -132,7 +125,7 @@ procedure(wvTestTerminal()
           ; loaded - the small circle below is drawn where that box says
           if(boundp('wvCdsInstMarkBox)
             then
-              printf("package box   : %L\n" wvCdsInstMarkBox(win fig hier))
+              printf("package box   : %L\n" wvCdsInstMarkBox(fig hier))
             else
               printf("package box   : wv_cds_instpin.il is not loaded\n"))
           ; which name wv_cds_instpin.il would send for this terminal
@@ -144,11 +137,11 @@ procedure(wvTestTerminal()
           r = 1.5 * grid
           when(grid && c2
             ; small: where the marker code puts it
-            wvTestTermCircle(win c2 r))
+            wvTestTermCircle(cv c2 r))
           r = 4.5 * grid
           when(grid && pt
             ; big: around the click, three times as wide
-            wvTestTermCircle(win pt r))
+            wvTestTermCircle(cv pt r))
         )
     )
     printf("=== end: %d circle set(s) drawn, wvTestTermClear() removes them ===\n"
