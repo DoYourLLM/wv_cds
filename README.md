@@ -7,7 +7,7 @@ Right-click a net in a Virtuoso schematic to plot it in wv:
 | Right-click item | What it does |
 |---|---|
 | **Send to WV (Direct)** | plots straight in wv, then probes those nets in the schematic |
-| **Send to WV_CDS** | puts the net in a small Python table; you plot from there when you are ready |
+| **Send to WV_CDS** | puts the net in a small Python table; you plot from there when you are ready, and the schematic probes update too |
 
 The items sit at the top of the net menu. **Shift-click to select several nets
 at once** - one net or n, they are all sent together:
@@ -128,6 +128,15 @@ separate ports because two servers cannot share one.
   schematic. It **clears every probe in that window first, including probes you
   placed by hand yourself**; that is what makes a net you removed from wv lose
   its probe. If wv does not answer, no probe is touched.
+- **`Send to WV_CDS` probes the same way, in a different order.** There the
+  plotting happens in the Python GUI, which afterwards asks Virtuoso to run the
+  probe step. Virtuoso cannot be called from outside, so the package runs a
+  small local server that hands whatever it receives to Virtuoso, which
+  evaluates it as SKILL (`python/wv_cds_skill_server.py`, itself a port of
+  Cadence's own example). **Anyone who can reach that port can run arbitrary
+  SKILL in your session**, which is why it binds `127.0.0.1` only. Set
+  `WV_CDS_SKILL_SERVER = nil` in `skill/wv_cds_config.il` to switch it off; the
+  GUI then logs that no skill server answered, and everything else still works.
 - wv takes a while to come up, so the first `Send to WV (Direct)` click often
   starts it and skips the plot; click again once it is up.
 - If the GUI's `sh dir` box is empty, **Send to WV** does nothing - it has to

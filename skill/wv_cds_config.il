@@ -77,6 +77,27 @@ WV_CDS_GUI_PORT = "61889"
 ; WV_CDS_GUI_PY = "/path/to/wv_cds_gui.py"
 
 ; ---------------------------------------------------------------------------
+; SKILL server (lets the Python GUI talk back to Virtuoso)
+; ---------------------------------------------------------------------------
+; The right-click "Send to WV (Direct)" probes the schematic itself, because it
+; runs inside Virtuoso. The Python GUI cannot - it is a separate process - so
+; when you press "Send to WV" there it sends a SKILL command back through this
+; server instead, and the probes update the same way.
+;
+; HOW THIS WORKS: a small server listens on a local port and hands anything it
+; receives to Virtuoso, which EVALUATES IT AS SKILL. Cadence's own article on
+; this ("How to send a SKILL command to Virtuoso via a TCP/IP socket") warns
+; that it has no authentication at all. The server therefore binds 127.0.0.1
+; only, so the exposure is limited to processes on this machine. Set
+; WV_CDS_SKILL_SERVER = nil below to switch it off entirely - the GUI then
+; reports that no skill server answered, and everything else keeps working.
+WV_CDS_SKILL_SERVER = t
+
+; port the skill server binds; must match WV_CDS_SKILL_PORT in
+; python/wv_cds_config.py. Cadence's example uses 8123.
+WV_CDS_SKILL_PORT = "8123"
+
+; ---------------------------------------------------------------------------
 ; sanity check
 ; ---------------------------------------------------------------------------
 when(rexMatchp("@" WV_CDS_SH_DIR)

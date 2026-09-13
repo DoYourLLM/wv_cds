@@ -9,6 +9,7 @@ A small Tkinter table of net names. Nets arrive over TCP from Virtuoso; press
 | `wv_cds_gui.py` | the window: table, buttons, TCP add-listener, send-to-wv worker |
 | `wv_cds_config.py` | configuration; paths are resolved from the file's own location |
 | `wv_cds_names.py` | asks wv which signals it is still displaying (used by the schematic probes) |
+| `wv_cds_skill_server.py` | port that hands SKILL to Virtuoso - **read its security note** |
 | `test_add_client.py` | tiny client that pushes names into the listener |
 
 Requires Python 3.5+ with Tkinter (`sudo apt install python3-tk`); standard

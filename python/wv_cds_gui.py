@@ -321,9 +321,44 @@ class SignalTableApp:
             len(names), new, skipped)
         if failed:
             line += ", %d failed" % len(failed)
-        self.events.put(("log", line + "\n"))
+        problem = self._ask_virtuoso_to_probe()
+        if problem:
+            self.events.put(("log", line + "\n"))
+            self.events.put(("log", problem))
+        else:
+            self.events.put(("log", line + ", probes updated\n"))
         for entry in failed:
             self.events.put(("log", entry))
+
+    def _ask_virtuoso_to_probe(self):
+        """Tell the running Virtuoso to refresh its net probes.
+
+        Returns "" when it worked, or a message to log when it did not.
+
+        The probes have to be created inside Virtuoso (geAddNetProbe) and
+        Virtuoso cannot be called from outside, so it runs a small server that
+        evaluates whatever arrives on this port as SKILL - see
+        skill/wv_cds_skill_server.il. The command sent is exactly the step the
+        right-click "Send to WV (Direct)" runs after plotting, so both routes
+        leave the schematic showing whatever wv has on screen.
+
+        Best effort on purpose: the server is switched off by default in some
+        setups and a GUI that plotted fine must not look broken because nobody
+        was listening.
+        """
+        try:
+            with socket.create_connection(
+                    (cfg.WV_CDS_SKILL_HOST, cfg.WV_CDS_SKILL_PORT),
+                    timeout=5) as sock:
+                sock.sendall(b"wvCdsProbeFromGui()\n")
+                stream = sock.makefile("r", encoding="utf-8", errors="replace")
+                stream.readline()   # reply to the server's connection notice
+                stream.readline()   # reply to our command
+        except OSError as exc:
+            return ("[skill] no skill server on %s:%d - wv is plotted but the "
+                    "schematic probes were not updated (%s)\n"
+                    % (cfg.WV_CDS_SKILL_HOST, cfg.WV_CDS_SKILL_PORT, exc))
+        return ""
 
     def _run_sh(self, sh_dir, script, arg):
         path = os.path.join(sh_dir, script)

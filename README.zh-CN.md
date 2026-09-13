@@ -7,7 +7,7 @@
 | 右键菜单项 | 作用 |
 |---|---|
 | **Send to WV (Direct)** | 直接画到 wv，然后在原理图里把这些 net probe 出来 |
-| **Send to WV_CDS** | 把 net 放进一个小 Python 表格；什么时候想画，你再从那里画 |
+| **Send to WV_CDS** | 把 net 放进一个小 Python 表格；什么时候想画，你再从那里画，原理图的 probe 也会跟着更新 |
 
 两个菜单项就在 net 菜单最上面。**按住 Shift 可以一次选中多条 net** —— 一条还是
 n 条，都会一起送过去：
@@ -122,6 +122,13 @@ skill 和 python 这两半各自的说明见 `skill/README.md`、`python/README.
   信号（这个工具画过的全部，减去你在 wv 里删掉的），然后在原理图里给每个都加上
   net probe。**它会先清空该窗口里的所有 probe —— 包括你自己手动放的**；正是靠
   这一步，你在 wv 里删掉的 net 才会跟着失去 probe。wv 没应答时，一个 probe 都不动。
+- **`Send to WV_CDS` 同样会 probe，只是顺序不同。** 这条路画图发生在 Python GUI 里，
+  画完之后由 GUI 反过来请求 Virtuoso 执行 probe。Virtuoso 没法被外部直接调用，
+  所以包里跑一个小型本地服务器，把收到的东西交给 Virtuoso **当 SKILL 求值**
+  （`python/wv_cds_skill_server.py`，照 Cadence 官方示例移植）。**能连上这个端口的人
+  就能在你的会话里执行任意 SKILL**，所以它只绑 `127.0.0.1`。要关掉就在
+  `skill/wv_cds_config.il` 里设 `WV_CDS_SKILL_SERVER = nil`，那时 GUI 只会记一行
+  "no skill server"，其余功能不受影响。
 - wv 启动要一会儿，所以第一次点 `Send to WV (Direct)` 往往只是把它启动起来、
   画图被跳过；等它起来后再点一次。
 - GUI 的 `sh dir` 框如果空着，**Send to WV** 不会有任何动作 —— 它必须指向本包。

@@ -41,6 +41,20 @@ WV_CDS_LISTEN_PORT = 61889
 WV_CDS_RPC_HOST = "127.0.0.1"
 WV_CDS_RPC_PORT = 61888
 
+# ---------------------------------------------------------------------------
+# SKILL server - how the GUI talks BACK to Virtuoso.
+#
+# "Send to WV" plots into wv, but the net probes have to be created inside
+# Virtuoso (geAddNetProbe). Virtuoso cannot be called from outside, so it runs
+# a small server (skill/wv_cds_skill_server.il + python/wv_cds_skill_server.py)
+# and the GUI sends it the SKILL command wvCdsProbeFromGui().
+#
+# Must match WV_CDS_SKILL_PORT in skill/wv_cds_config.il. Cadence's example
+# uses 8123. When nothing is listening, the GUI just logs it and carries on.
+# ---------------------------------------------------------------------------
+WV_CDS_SKILL_HOST = "127.0.0.1"
+WV_CDS_SKILL_PORT = 8123
+
 # Poll interval (ms) for draining the add-queue into the table.
 WV_CDS_POLL_MS = 100
 

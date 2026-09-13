@@ -128,4 +128,35 @@ procedure(wvCdsDisplayedNames()
   )
 )
 
+; The command the Python GUI sends over the skill server (see
+; wv_cds_skill_server.il) after it has finished plotting, so the schematic gets
+; the probes too. The GUI is a separate process and cannot touch the schematic
+; itself; this runs inside Virtuoso instead.
+;
+; The skill server evaluates commands from the CIW's context, so there is no
+; right-click window here - take the current one. Unlike the Direct path there
+; is no way to know which schematic the user meant, so a window that is not
+; probeable is refused rather than guessed at.
+;
+; Same rule as everything else: nil from wvCdsDisplayedNames means wv did not
+; answer, and then the probes are left exactly as they were.
+procedure(wvCdsProbeFromGui()
+  prog((win names)
+    win = hiGetCurrentWindow()
+    if(win == nil
+      then
+        warn("wvCds: no current window - probes left as they were\n")
+        return(nil)
+    )
+    names = wvCdsDisplayedNames()
+    if(names
+      then
+        wvCdsProbeNames(win cdr(names))
+      else
+        warn("wvCds: wv did not answer - probes left as they were\n")
+    )
+    return(names)
+  )
+)
+
 printf("wv_cds_probe.il loaded\n")
