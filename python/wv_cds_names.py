@@ -39,6 +39,12 @@ TIMEOUT = 10.0
 
 # Variables are wvc_-prefixed because wv_rpc_server.tcl runs this with
 # uplevel #0, so each one becomes a global in wv's own interpreter.
+#
+# The name must match the key, not merely be non-empty: wv RECYCLES line
+# object handles. Once a line is freed its handle value comes back for a later
+# sx_display, so a stale entry can point at a different, live signal - seen in
+# practice as two names sharing one handle. A bare non-empty test then reports
+# a deleted signal as still on screen.
 TCL = (
     "set wvc_out {}"
     " ; if {[info exists ::wv_cds_lines]} {"
@@ -46,7 +52,7 @@ TCL = (
     " foreach wvc_l [dict get $::wv_cds_lines $wvc_nm] {"
     " set wvc_alive 0"
     " ; if {![catch {sx_get_name $wvc_l} wvc_n2]}"
-    " { if {$wvc_n2 ne \"\"} { set wvc_alive 1 } }"
+    " { if {$wvc_n2 eq $wvc_nm} { set wvc_alive 1 } }"
     " ; if {$wvc_alive} { lappend wvc_out $wvc_nm ; break } } } }"
     " ; set wvc_out [linsert $wvc_out 0 [llength $wvc_out]]"
     " ; set wvc_out"

@@ -53,10 +53,18 @@ wv1() {
     cmd="$cmd set wvc_nm [sx_get_name \$wvc_sig]"
     cmd="$cmd ; set wvc_live 0"
     # probe every line object we kept for this signal; one survivor is enough
+    #
+    # The name must match the key, not merely be non-empty: wv RECYCLES line
+    # object handles. Once a line is freed, its handle value comes back for a
+    # later sx_display, so a stale entry can end up pointing at a different,
+    # live signal - observed as net3 and net5 sharing _94c94c0_void_pp. A bare
+    # non-empty test then reports the deleted net3 as still on screen and skips
+    # it. Comparing the name makes a recycled handle fail the check, which puts
+    # that net back on the list to display.
     cmd="$cmd ; if {[dict exists \$::wv_cds_lines \$wvc_nm]} {"
     cmd="$cmd foreach wvc_old [dict get \$::wv_cds_lines \$wvc_nm] {"
     cmd="$cmd set wvc_alive 0"
-    cmd="$cmd ; if {![catch {sx_get_name \$wvc_old} wvc_nm2]} { if {\$wvc_nm2 ne \"\"} { set wvc_alive 1 } }"
+    cmd="$cmd ; if {![catch {sx_get_name \$wvc_old} wvc_nm2]} { if {\$wvc_nm2 eq \$wvc_nm} { set wvc_alive 1 } }"
     cmd="$cmd ; if {\$wvc_alive} { set wvc_live 1 ; break } } }"
     cmd="$cmd ; if {\$wvc_live} { incr wvc_skip } else {"
     cmd="$cmd set wvc_lines [sx_display \$wvc_sig]"
