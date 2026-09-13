@@ -391,4 +391,4 @@ procedure(wvCdsInstPinNames(sel pnames)
           out = append1(out nm))))
     out))
 
-printf("wv_cds_instpin.il loaded\n")
+printf("wv_cds_instpin.il loaded - terminal currents: names, and a marker per current wv shows\n")

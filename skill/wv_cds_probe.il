@@ -176,4 +176,24 @@ procedure(wvCdsProbeFromGui()
   )
 )
 
-printf("wv_cds_probe.il loaded\n")
+; The same round, run by hand. Nothing calls it: it is how to check the probes
+; and the terminal markers without clicking anything -
+;
+;   wvCdsRefresh()
+;
+; in the CIW, with the schematic window current. The reply and the line
+; wvCdsProbeNames prints say how much of what wv is showing got a probe and a
+; marker, which is the quickest way to tell a stale load from a real problem.
+procedure(wvCdsRefresh()
+  let((win names)
+    win = hiGetCurrentWindow()
+    names = wvCdsDisplayedNames()
+    if(names
+      then
+        wvCdsProbeNames(win cdr(names))
+      else
+        warn("wvCds: wv did not answer - nothing changed\n")
+    )
+    names))
+
+printf("wv_cds_probe.il loaded - nets are probed, currents are marked in the schematic\n")
