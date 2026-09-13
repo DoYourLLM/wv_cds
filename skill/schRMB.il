@@ -25,10 +25,16 @@
 ; and hiInsertMenuItem prepends into it, so the built-in entries of the net
 ; menu are preserved. Deleting an item before inserting it keeps the
 ; post-install trigger idempotent: the trigger fires once per schematic
-; window, while the OSM handle may be shared between windows. The delete is
-; asked for only when the menu really carries the item, so the harmless but
-; noisy "hiDeleteMenuItem: can't find this item" warning does not appear the
-; first time a menu is extended (see wvCdsRmbItemNames).
+; window, and both calls act on all instances of a menu, so a shared menu
+; would otherwise end up with the items twice. The delete answers with a
+; warning while the item is not there yet, which is the first time each
+; category menu is extended; muffleWarnings in wvCdsRmbAddItem is what keeps
+; that out of the CIW.
+;
+; hiGetMenuItems cannot be used to ask first: its reference says it takes a
+; menu built by hiCreateMenu, hiCreatePulldownMenu, hiCreateHorizontalFixedMenu
+; or hiCreateVerticalFixedMenu and returns nil for anything else, which an
+; object-sensitive menu is.
 ;
 ; NOTE: schGetPopUpMenu is not indexed in the IC23.1 SKILL reference (the
 ; documented pair is schRegisterPopUpMenu / schUnregisterPopUpMenu, which
@@ -40,50 +46,37 @@
 ; Verified with:
 ;   check_new_functions.py schRMB.il --strict \
 ;     --allow schGetPopUpMenu,wvCdsSendSelectionDirect,wvCdsSendSelectionToGui
-
-; The item handles popMenu already carries, or nil when that cannot be worked
-; out at all.
 ;
-; hiDeleteMenuItem prints
-;   *WARNING* hiDeleteMenuItem: can't find this item in the menu <name>
-; when the item is not in the menu, and errset does not silence THAT - it
-; swallows the error the function raises, not the warning it prints on the way
-; out. So the first time each category menu is extended, when the item is not
-; there yet, the delete warns; with the items registered on five categories
-; that was ten warnings on the first click. Asking the menu what it holds
-; first is what avoids the pointless delete.
-;
-; nil means "unknown", not "empty", and the caller then deletes blindly: a
-; menu that answers nothing either has not been extended yet or cannot be
-; queried, and a duplicate pair of items - a second "Send to WV" line after
-; another schematic window opens - would be worse than a warning.
-procedure(wvCdsRmbItemNames(popMenu)
-  let((r items out n)
-    out = nil
-    r = errset(hiGetMenuItems(popMenu))
-    items = when(r car(r))
-    when(items && listp(items)
-      foreach(it items
-        n = nil
-        r = errset(it->name)
-        n = when(r car(r))
-        ; a built-in entry may be a plain list rather than a menu item object
-        unless(n
-          r = errset(car(it))
-          n = when(r car(r)))
-        when(n
-          out = append1(out n))))
-    out))
+; Two arity warnings are known false positives of the signature extraction:
+;   muffleWarnings  "needs at least 2" - g_expr1 ... is variadic, and one
+;                   expression is what progn( g_expr1 ... ) takes too
+;   mbRegisterAction "10 of 9" - the escaped quotes inside the printf string
+;                   of the Navigator test line split it into extra arguments
 
 ; delete-then-insert one item at the top of popMenu; idempotent
+;
+; The delete is what makes this idempotent: the post-install trigger fires
+; once per schematic window, the same menu structure can be reached from more
+; than one window, and hiDeleteMenuItem/hiInsertMenuItem act on all instances
+; of a menu, so without it a second firing would leave two "Send to WV" lines.
+;
+; The first time each category menu is extended there is nothing to delete yet,
+; and hiDeleteMenuItem answers
+;   *WARNING* hiDeleteMenuItem: can't find this item in the menu <name>
+; which, with the items registered on five categories, was ten lines in the
+; CIW on the first right-click.
+;
+; muffleWarnings is what silences it. NOT errset: errset controls the printing
+; of ERROR messages (and its g_errprint argument already defaults to nil), while
+; this message is a warning - the reference for muffleWarnings says it drops the
+; output of warn and of C level ilWarn* calls, which is what this one is. The
+; delete itself stays unconditional, so a menu that cannot be inspected is
+; still cleaned up rather than doubled.
 procedure(wvCdsRmbAddItem(popMenu itemName itemText callback)
-  let((have)
-    have = wvCdsRmbItemNames(popMenu)
-    when(have == nil || member(itemName have)
-      errset(hiDeleteMenuItem(popMenu itemName)))
-    hiInsertMenuItem(popMenu
-      hiCreateMenuItem(?name itemName ?itemText itemText ?callback callback)
-      0)))
+  muffleWarnings(errset(hiDeleteMenuItem(popMenu itemName)))
+  hiInsertMenuItem(popMenu
+    hiCreateMenuItem(?name itemName ?itemText itemText ?callback callback)
+    0))
 
 ; put both items on one category menu. They are added in reverse so the
 ; final menu reads "Send to WV (Direct)" first and "Send to WV_CDS
