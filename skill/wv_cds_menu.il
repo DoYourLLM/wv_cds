@@ -17,12 +17,24 @@ procedure(wvCdsSendSelectionToGui()
 ; push the current schematic selection straight to wv, skipping the
 ; Python GUI middle layer (wvCdsSendToWv brings wv up, optionally opens
 ; WV_CDS_FSDB, and then plots every selected net through the wv RPC server
-; on 61888)
+; on 61888).
+;
+; Afterwards the same window gets the net probes: wvCdsDisplayedNames asks wv
+; what it is still showing (the whole batch, not just this click's nets, and
+; minus anything you deleted in wv), and every one of those names is probed.
+; wvCdsDisplayedNames returns nil when wv did not answer, and then the probes
+; are deliberately left alone instead of being cleared.
 procedure(wvCdsSendSelectionDirect()
-  let((signals)
+  let((signals names)
     sch_win = hiGetCurrentWindow()
     signals = CCSwvPlotSelectedSignals(sch_win)
-    wvCdsSendToWv(signals)))
+    wvCdsSendToWv(signals)
+    names = wvCdsDisplayedNames()
+    if(names
+      then
+        wvCdsProbeNames(sch_win cdr(names))
+      else
+        warn("wvCds: wv did not answer - probes left as they were\n"))))
 
 procedure(wvCdsBuildPulldownMenu()
   sch_win=hiGetCurrentWindow()

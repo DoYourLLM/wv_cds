@@ -10,6 +10,7 @@ The half that runs inside Virtuoso. Package-wide setup:
 | `wv_cds_config.il` | configuration - the one file you edit |
 | `wv_cds_ipc.il` | IPC bridge, plus the on-demand start of wv and the Python GUI |
 | `wv_cds_signal.il` | reads the schematic selection and builds the hierarchy path |
+| `wv_cds_probe.il` | probes, in the schematic, the nets wv is displaying |
 | `wv_cds_table.il` | Virtuoso form window with the net list (Add / Remove) |
 | `wv_cds_menu.il` | banner menu `Example > wvcds`, and the selection wrappers |
 | `schRMB.il` | the net right-click menu items |

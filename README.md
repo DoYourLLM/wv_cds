@@ -6,7 +6,7 @@ Right-click a net in a Virtuoso schematic to plot it in wv:
 
 | Right-click item | What it does |
 |---|---|
-| **Send to WV (Direct)** | plots straight in wv |
+| **Send to WV (Direct)** | plots straight in wv, then probes those nets in the schematic |
 | **Send to WV_CDS** | puts the net in a small Python table; you plot from there when you are ready |
 
 The items sit at the top of the net menu. **Shift-click to select several nets
@@ -122,6 +122,12 @@ separate ports because two servers cannot share one.
   probes it on the next click. A line you deleted in wv answers the empty
   string, so a net that is already on screen is skipped while one whose curve
   you deleted is plotted again.
+- **`Send to WV (Direct)` also probes.** When the plot is done it asks wv which
+  signals it is still showing - everything this tool has plotted, minus
+  anything you deleted in wv - and puts a net probe on each one in the
+  schematic. It **clears every probe in that window first, including probes you
+  placed by hand yourself**; that is what makes a net you removed from wv lose
+  its probe. If wv does not answer, no probe is touched.
 - wv takes a while to come up, so the first `Send to WV (Direct)` click often
   starts it and skips the plot; click again once it is up.
 - If the GUI's `sh dir` box is empty, **Send to WV** does nothing - it has to

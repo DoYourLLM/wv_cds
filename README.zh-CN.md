@@ -6,7 +6,7 @@
 
 | 右键菜单项 | 作用 |
 |---|---|
-| **Send to WV (Direct)** | 直接画到 wv |
+| **Send to WV (Direct)** | 直接画到 wv，然后在原理图里把这些 net probe 出来 |
 | **Send to WV_CDS** | 把 net 放进一个小 Python 表格；什么时候想画，你再从那里画 |
 
 两个菜单项就在 net 菜单最上面。**按住 Shift 可以一次选中多条 net** —— 一条还是
@@ -118,6 +118,10 @@ skill 和 python 这两半各自的说明见 `skill/README.md`、`python/README.
 - **一个信号只画一次。** `wv_cds_plot.sh` 不靠记名字，而是**直接问 wv**：每次
   `sx_display` 返回的 line 对象都留着，下次点的时候拿它探一下。你在 wv 里删掉的
   曲线会返回空字符串 —— 所以还显示着的会跳过，你删掉的会重新画上。
+- **`Send to WV (Direct)` 同时会 probe。** 画完之后它会问 wv 现在还显示着哪些
+  信号（这个工具画过的全部，减去你在 wv 里删掉的），然后在原理图里给每个都加上
+  net probe。**它会先清空该窗口里的所有 probe —— 包括你自己手动放的**；正是靠
+  这一步，你在 wv 里删掉的 net 才会跟着失去 probe。wv 没应答时，一个 probe 都不动。
 - wv 启动要一会儿，所以第一次点 `Send to WV (Direct)` 往往只是把它启动起来、
   画图被跳过；等它起来后再点一次。
 - GUI 的 `sh dir` 框如果空着，**Send to WV** 不会有任何动作 —— 它必须指向本包。
