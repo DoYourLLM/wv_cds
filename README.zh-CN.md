@@ -134,9 +134,11 @@ skill 和 python 这两半各自的说明见 `skill/README.md`、`python/README.
   `<层次>.<inst>:*`；三个及以上时是 `<层次>.<inst>:<n>`，n 是该端子的 net 在器件
   端子表里的位置；net 不在表里的端子会被跳过并 warn 一行。电流**不加 probe**——
   原理图的 probe 是 net，把端子名当 net 递过去（`/R2:1`）就会得到 "the object
-  does not exist"；改成在你选中的那个 figure 上用 highlight 椭圆圈出来，CIW 里
-  同时打印它对应的实例端子路径（`/I0/R2/PLUS`）。再 send 一次会先清掉上一次的圈。
-  net / 导线不受影响，照旧 probe。
+  does not exist"；改成在原理图里高亮那个端子的 figure 本身，CIW 里同时打印它
+  对应的实例端子路径（`/I0/R2/PLUS`）。标记是**按 wv 报回来的列表重建的**，和
+  net probe 同一轮：wv 里还留着哪个电流，那个端子就一直标着；你在 wv 里删掉曲线，
+  标记也跟着消失。wv 里有、但本次会话没发过的电流没有记录 figure，只会计数、
+  不会标。net / 导线不受影响，照旧 probe。
 - wv 启动要一会儿，所以第一次点 `Send to WV (Direct)` 往往只是把它启动起来、
   画图被跳过；等它起来后再点一次。
 - GUI 的 `sh dir` 框如果空着，**Send to WV** 不会有任何动作 —— 它必须指向本包。

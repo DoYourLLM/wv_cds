@@ -12,9 +12,10 @@
 ;
 ; Device currents arrive in the same list and are NOT probed: geAddNetProbe
 ; wants a net, and sending "R1:1" on as a path is what produced
-; "GE-2133: The object R1:1 does not exist in cellview". A current is marked in
-; the schematic when it is sent instead, so all that is left to do here is to
-; recognise it - wvCdsIsCurrent, in wv_cds_instpin.il.
+; "GE-2133: The object R1:1 does not exist in cellview". They are marked in the
+; schematic instead, from this same list and in this same round, so a current
+; still in wv stays marked and one deleted in wv loses its marker
+; (wvCdsInstMarkShow, in wv_cds_instpin.il).
 ;
 ; Checked against the IC23.1 SKILL Reference (skdfref):
 ;   geAddNetProbe( [w_windowId] [l_lpp] [lt_probeSpec] ) => o_probe
@@ -71,7 +72,7 @@ procedure(wvCdsProbeNet(win nm)
 ; hand in that window - the caller only reaches this point when wv really did
 ; report a list, so a failed click never clears anything.
 procedure(wvCdsProbeNames(win names)
-  prog((n ncur nm)
+  prog((n ncur nmark nm cv)
     n = 0
     ncur = 0
     if(win == nil
@@ -79,6 +80,7 @@ procedure(wvCdsProbeNames(win names)
         warn("wvCds: no schematic window - nothing probed\n")
         return(n)
     )
+    cv = car(errset(geGetEditCellView(win)))
     ; names may be nil, and that is NOT "do nothing". The caller only reaches
     ; this point when wv answered, so an empty list means every signal this
     ; tool plotted is gone from wv - and then every probe here goes too.
@@ -89,8 +91,10 @@ procedure(wvCdsProbeNames(win names)
     ; again in here threw that away.
     errset(geDeleteAllProbe(win))
     foreach(nm names
-      ; wv reports currents and nets in one list, and only the nets get a
-      ; probe: a current is marked in the schematic when it is sent.
+      ; wv reports currents and nets in one list. Only the nets get a probe: a
+      ; current is not a net, and it is marked in the schematic instead - from
+      ; this same list, so that a current still in wv stays marked and one you
+      ; deleted in wv loses its marker.
       if(wvCdsIsCurrent(win nm)
         then ncur = ncur + 1
         else
@@ -99,8 +103,9 @@ procedure(wvCdsProbeNames(win names)
           )
       )
     )
-    printf("wvCds: cleared the window, then probed %d of %d signal(s); %d current(s) left to their markers\n"
-           n length(names) ncur)
+    nmark = wvCdsInstMarkShow(cv win names)
+    printf("wvCds: cleared the window, then probed %d of %d signal(s) and marked %d of %d current(s)\n"
+           n length(names) nmark ncur)
     return(n)
   )
 )

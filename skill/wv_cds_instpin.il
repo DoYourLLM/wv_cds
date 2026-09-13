@@ -22,18 +22,22 @@
 ; A CURRENT IS NOT PROBED. geAddNetProbe wants a net, and the instance terminal
 ; path that would give the current - the reference script's
 ; subcktPath + instance~>name + "/" + nodeName, e.g. "/I0/I1/R2/PLUS" - is
-; drawn in the schematic instead: the reference script's small ellipse around
-; the point the command was invoked at, plus the selected figure itself,
-; highlighted through the instance path it lives in. That is what the reference
-; script does with the terminal it finds - CCSaddProbes marks the point with
-; geAddHilightEllipse and does not probe - and it is why the figure's own bbox
-; is NOT used for the ellipse: see wvCdsInstHlPointBox.
+; marked in the schematic instead: the terminal's own figure, highlighted
+; through the instance path it lives in.
+;
+; The markers are rebuilt from the list wv reports, in the same round that
+; re-probes the nets, so what is marked is exactly what wv is still showing: a
+; current that was sent clicks ago keeps its marker, one you deleted in wv loses
+; it. That is also why the reference script's small ellipse around the click
+; point is not used - it marks the one point the command was invoked at, and wv
+; can be showing several currents at once.
 ;
 ; The probe step therefore only has to RECOGNISE a current, so that a name like
 ; "R1:1" is not turned into the nonsense path "/R1:1" - which is exactly what
 ; geAddNetProbe answered with
 ;   GE-2133: The object R1:1 does not exist in cellview
-; before.
+; before. Only the names in the table can be marked as well: a current wv holds
+; that this session never sent has no figure recorded for it.
 ;
 ; Recognition has three routes, and wvCdsIsCurrent tries them in order:
 ;
@@ -48,7 +52,7 @@
 ; signal sx_signal matched, so a two terminal device - requested as "R1:*" -
 ; comes back as "R1:1". That name used to miss the table and fall through to
 ; the plain net conversion; the two terminal case therefore also records its
-; path under the name without the terminal suffix (see wvCdsInstProbePath).
+; path under the name without the terminal suffix (see wvCdsInstEntry).
 ;
 ; Checked against the IC23.1 SKILL Reference:
 ;   geGetObjectSelectedSet( [ d_cellview ] )
@@ -56,10 +60,8 @@
 ;   buildString( l_strings [ S_glueCharacters ] )   append1( l_list g_arg )
 ;   geCreateHilightSet( d_cellview l_layerPurposePair [ g_notGlobal ] )
 ;   geAddHilightFig( g_hlSetId d_figId [g_drawAll] [l_hierPath] [l_vertex] )
-;   geAddHilightEllipse( g_hlSetId l_bBox )  geDrawHilightSet( [w] [set] )
+;   geDrawHilightSet( [w_windowId] [g_hlSetId] )
 ;   geDeleteHilightSet( g_hlSetId )
-;   hiGetCommandPoint( [w_windowId] [g_dontAdjust] )  gePointToFig( [w] [i] [l] )
-;   schGetEnv( t_variableName )
 ;
 ; Verified with:
 ;   check_new_functions.py wv_cds_instpin.il --strict
@@ -69,19 +71,21 @@
 ;                    argument, but the counter splits an assignment into
 ;                    "wvCdsInstHlSet->enable", "=" and "t"
 
-; wv name -> probe path, filled in as signals are built
-unless(boundp('wvCdsInstProbe)
-  wvCdsInstProbe = makeTable("wvCdsInstProbe" nil))
+; wv name -> ( probe path  figure  hierarchy path ), filled in as currents are
+; built. The figure and its hierarchy path are what mark the terminal later,
+; when wv reports the name - see wvCdsInstMarkShow.
+unless(boundp('wvCdsInstCurrent)
+  wvCdsInstCurrent = makeTable("wvCdsInstCurrent" nil))
 
-; The probe path recorded for a device current, or nil for anything else
-; (a plain net, say, which the caller converts from its own name).
-procedure(wvCdsInstProbePath(nm)
-  let((p parts base acc x)
-    p = nil
+; The record for a device current, or nil for anything else (a plain net, say,
+; which the caller converts from its own name).
+procedure(wvCdsInstEntry(nm)
+  let((e parts base acc x)
+    e = nil
     when(stringp(nm)
-      when(tablep(wvCdsInstProbe)
-        p = arrayref(wvCdsInstProbe nm)
-        unless(p
+      when(tablep(wvCdsInstCurrent)
+        e = arrayref(wvCdsInstCurrent nm)
+        unless(e
           ; wv answers with its OWN name for a signal, which is not always the
           ; one it was asked for: a two terminal device is requested as
           ; "R1:*" and wv reports its single current as "R1:1", so the exact
@@ -103,8 +107,16 @@ procedure(wvCdsInstProbePath(nm)
                 then acc = strcat(acc ":" x)
                 else acc = x))
             when(base
-              p = arrayref(wvCdsInstProbe base))))))
-    p))
+              e = arrayref(wvCdsInstCurrent base))))))
+    e))
+
+; The probe path recorded for a device current, or nil for anything else.
+procedure(wvCdsInstProbePath(nm)
+  car(wvCdsInstEntry(nm)))
+
+; figure + hierarchy path recorded for a device current, or nil
+procedure(wvCdsInstMarkOf(nm)
+  cdr(wvCdsInstEntry(nm)))
 
 ; The probe path of an instance terminal worked out from the SCHEMATIC rather
 ; than from the table above. This is the reference script's method (x1,
@@ -188,41 +200,16 @@ procedure(wvCdsIsCurrent(win nm)
       p = rexMatchp(":[0-9*]+$" nm))
     p))
 
-; The figures this send turned into currents, as ( figure hierPath ) pairs, and
-; the highlight set they are drawn in. Both are collected while the names are
-; built, so that the set is created once for the whole selection.
-unless(boundp('wvCdsInstHlFigs)
-  wvCdsInstHlFigs = nil)
+; The highlight set the terminal markers are drawn in.
 unless(boundp('wvCdsInstHlSet)
   wvCdsInstHlSet = nil)
 
-; The ellipse the reference script draws, around the point the command was
-; invoked at: one and a half snap spacings across, in user units.
-;
-; A POINT, not the figure's own bbox, and that is the whole reason this works.
-; geGetObjectSelectedSet describes a terminal as a figure plus the instance path
-; it lives in - ((db:3865864 ((db:38370404 0 0 0)))), where the 0 0 0 are the
-; member instance, row and column and NOT coordinates - and a figure inside an
-; instance is in that instance's coordinate system, so its bbox drawn straight
-; into the schematic lands wherever the instance's own origin is. The point the
-; user acted on is already in schematic coordinates, so it needs no transform.
-;
-; nil when there is no usable point: no last press in this window (the send came
-; from the form or the banner menu), or a press that is not over the drawing.
-procedure(wvCdsInstHlPointBox(win)
-  let((pt grid box)
-    pt = hiGetCommandPoint(win)
-    when(pt && gePointToFig(win nil pt)
-      grid = schGetEnv("schSnapSpacing")
-      when(grid
-        box = list(car(pt)-1.5*grid:cadr(pt)-1.5*grid
-                   car(pt)+1.5*grid:cadr(pt)+1.5*grid)))
-    box))
-
-; Add the figure itself, which needs no coordinates at all: the path from
-; geGetObjectSelectedSet is exactly the l_hierPath geAddHilightFig wants for a
-; figure inside an instance. Without it the pin of an instance does not draw,
-; so it is tried again without the path for a figure that needs none.
+; Add one figure, through the hierarchy path it lives in: that is the
+; l_hierPath argument geAddHilightFig's reference gives for "figures located
+; inside the hierarchy", format ( dbInst memInst row column ), which is exactly
+; what geGetObjectSelectedSet hands over. It needs no coordinates, which is what
+; makes it work for a figure that is not in the schematic's own coordinate
+; system. Tried again without the path, for a figure that needs none.
 procedure(wvCdsInstHlFigAdd(fig hierPath)
   let((r)
     r = errset(geAddHilightFig(wvCdsInstHlSet fig nil hierPath))
@@ -230,43 +217,50 @@ procedure(wvCdsInstHlFigAdd(fig hierPath)
       r = errset(geAddHilightFig(wvCdsInstHlSet fig nil)))
     car(r)))
 
-; Drop the markers of the previous send, then mark this send's terminals: the
-; point the reference script uses, plus the figures themselves.
+; Mark, in the schematic, every device current wv is showing.
 ;
-; Deleted BY SET, not with geDeleteAllHilightSet: the reference script clears
-; the whole cellview that way, which would throw away highlights the user made
-; himself. An empty selection still deletes, so the markers never outlive the
-; send that put them there.
+; Rebuilt from wv's list on every probe round, exactly like the net probes, and
+; NOT drawn once per send: a current that is no longer in wv loses its marker,
+; and one that an earlier click put there keeps it as long as wv still shows it.
+;
+; The markers are the terminals' own figures, through the instance path recorded
+; with each name. The reference script's small ellipse around the click point
+; cannot do this - it marks the one point the command was invoked at, and wv can
+; be showing several currents at once.
+;
+; Deleted BY SET before rebuilding, not with geDeleteAllHilightSet the way the
+; reference script cleans up, which would throw away highlights the user made
+; himself. A round with no currents still deletes, so markers never outlive the
+; curves they belong to.
 ;
 ; geCreateHilightSet wants a cellview that is displayed in a window, and returns
 ; a DISABLED set, and the reference says the window has to be refreshed before
 ; the objects are visible - hence the enable and the geDrawHilightSet.
-procedure(wvCdsInstHlShow(cv win)
-  let((r n lpp box)
+;
+; Returns how many were marked. A name wv is showing that this session never
+; sent has no figure recorded for it, so it is counted but not drawn.
+procedure(wvCdsInstMarkShow(cv win names)
+  let((r n lpp e nm)
     ; the layer the reference script marks with
     lpp = list("hilite" "drawing1")
     when(wvCdsInstHlSet
       errset(geDeleteHilightSet(wvCdsInstHlSet))
       wvCdsInstHlSet = nil)
-    when(cv && wvCdsInstHlFigs
+    n = 0
+    when(cv
       r = errset(geCreateHilightSet(cv lpp nil))
       wvCdsInstHlSet = when(r car(r))
       when(wvCdsInstHlSet
         errset(wvCdsInstHlSet->enable = t)
-        box = wvCdsInstHlPointBox(win)
-        when(box
-          errset(geAddHilightEllipse(wvCdsInstHlSet box)))
-        n = 0
-        foreach(e wvCdsInstHlFigs
-          when(wvCdsInstHlFigAdd(car(e) car(cdr(e)))
-            n = n + 1))
-        errset(geDrawHilightSet(win wvCdsInstHlSet))
-        unless(n == length(wvCdsInstHlFigs)
-          warn("wvCds: marked %d of %d terminal(s) in the schematic\n"
-               n length(wvCdsInstHlFigs))))
+        foreach(nm names
+          e = wvCdsInstMarkOf(nm)
+          when(e
+            when(wvCdsInstHlFigAdd(car(e) car(cdr(e)))
+              n = n + 1)))
+        errset(geDrawHilightSet(win wvCdsInstHlSet)))
       unless(wvCdsInstHlSet
         warn("wvCds: could not open a highlight set - terminals left unmarked\n")))
-    wvCdsInstHlFigs = nil))
+    n))
 
 ; One selected terminal -> the name to send to wv, or nil to skip it.
 ; pnames is the list of instances the window has descended into, so the name
@@ -313,22 +307,20 @@ procedure(wvCdsInstPinName(g pnames)
                 wvName = strcat(instKey ":" sig)
                 path = strcat("/" buildString(append1(pnames instName) "/")
                               "/" net)
-                wvCdsInstProbe[wvName] = path
+                ; the path, plus the figure and the instance path it lives in -
+                ; the last two are what draws the terminal's marker once wv
+                ; reports the name (wvCdsInstMarkOf, wvCdsInstMarkShow)
+                wvCdsInstCurrent[wvName] = list(path fig car(cdr(g)))
                 ; The probe step is driven by the names wv reports, and for the
                 ; two terminal case that is not the name just asked for: sent
                 ; "R1:*", wv answers "R1:1". Same instance, one current, so the
-                ; path also answers to the name with the terminal suffix cut
+                ; record also answers to the name with the terminal suffix cut
                 ; off. Three or more terminals record the exact name only:
                 ; there, guessing between several currents is what would pick
                 ; the wrong one.
                 when(sig == "*"
-                  wvCdsInstProbe[instKey] = path)
-                ; the terminal is marked, not probed: the figure the user
-                ; selected, together with the instance path it lives in, which
-                ; is what geAddHilightFig needs to draw a figure that sits
-                ; inside an instance
-                wvCdsInstHlFigs = append1(wvCdsInstHlFigs list(fig car(cdr(g))))
-                printf("wvCds: current %s -> %s (marked in the schematic, not probed)\n"
+                  wvCdsInstCurrent[instKey] = list(path fig car(cdr(g))))
+                printf("wvCds: current %s -> %s (marked in the schematic once wv shows it)\n"
                        wvName path)
               )
             )

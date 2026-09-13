@@ -146,10 +146,13 @@ separate ports because two servers cannot share one.
   whose net is not in that list is skipped with a warning. A current is **not
   probed** - a schematic probe is a net, and asking for the terminal as a net,
   `/R2:1`, is what makes Virtuoso answer "the object does not exist" - so the
-  terminal is instead marked in the schematic with a highlight ellipse over the
-  figure you selected, and the CIW says which instance-terminal path it came
-  from (`/I0/R2/PLUS`). Sending again clears the previous markers. A wire or net
-  is unaffected and still gets a probe.
+  terminal's own figure is highlighted in the schematic instead, and the CIW
+  says which instance-terminal path it came from (`/I0/R2/PLUS`). The markers
+  are rebuilt from the list wv reports, in the same round that re-probes the
+  nets: every current wv is still showing stays marked, and one you delete in wv
+  loses its marker, exactly like the probes. A current wv holds that this
+  session never sent has no figure recorded, so it is counted but not marked. A
+  wire or net is unaffected and still gets a probe.
 - wv takes a while to come up, so the first `Send to WV (Direct)` click often
   starts it and skips the plot; click again once it is up.
 - If the GUI's `sh dir` box is empty, **Send to WV** does nothing - it has to
