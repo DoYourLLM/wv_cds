@@ -105,8 +105,12 @@ procedure(wvCdsProbeNames(win names)
 ; empty reply and a "refused" reply are both nil here, so without it "nothing
 ; is displayed any more" (clear the probes) would look identical to "wv is not
 ; answering" (leave the probes alone). The caller drops the count with cdr.
+;
+; The names are echoed to the CIW as they arrive, before anything is probed:
+; when a probe comes back FAILED this is what says whether wv handed us a name
+; that does not exist in this schematic, or nothing at all.
 procedure(wvCdsDisplayedNames()
-  prog((r tok)
+  prog((r tok names)
     r = runSyncIPC(sprintf(nil "%s %s/python/wv_cds_names.py"
                              wvCdsPython() WV_CDS_SH_DIR))
     tok = car(r)
@@ -114,6 +118,10 @@ procedure(wvCdsDisplayedNames()
       then
         if(rexMatchp("^refused" tok)
           then r = nil
+          else
+            names = cdr(r)
+            printf("wvCds: wv is showing %d signal(s): %L\n"
+                   length(names) names)
         )
     )
     return(r)
