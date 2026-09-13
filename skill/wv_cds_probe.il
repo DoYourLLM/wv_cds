@@ -2,7 +2,7 @@
 ;
 ; Called at the end of a "Send to WV (Direct)" click. The names come from
 ; wv_cds_names.py (in python/), which asks wv what it is still showing, and
-; each one gets a net probe:
+; each NET among them gets a probe:
 ;
 ;   geAddNetProbe(win nil "/I0/I1/n1")
 ;
@@ -10,22 +10,21 @@
 ; in the format of /instname/instname/.../objectName" - while the names coming
 ; out of wv use the dotted form (I0.n1), so wvCdsProbeNet converts.
 ;
+; Device currents arrive in the same list and are NOT probed: geAddNetProbe
+; wants a net, and sending "R1:1" on as a path is what produced
+; "GE-2133: The object R1:1 does not exist in cellview". A current is marked in
+; the schematic when it is sent instead, so all that is left to do here is to
+; recognise it - wvCdsIsCurrent, in wv_cds_instpin.il.
+;
 ; Checked against the IC23.1 SKILL Reference (skdfref):
 ;   geAddNetProbe( [w_windowId] [l_lpp] [lt_probeSpec] ) => o_probe
 ;   geDeleteAllProbe( [w_windowId] [g_crossProbeFlag] ) => t / nil
 ;
-; Written with prog + if + foreach only. NOT when/unless/cond: the reference
-; gives those a single body expression each -
-;   when( g_condition g_expr1 )      unless( g_condition g_expr1 )
-; - and hand-writing them with several bodies (or hand-rolling cond, whose
-; signature is cond( l_clause1 ), a single list of clauses) is what produced
-; "eval: not a function - !names" earlier. prog takes several expressions, so
-; straight-line code is both legal and readable.
-;
 ; Verified with:
 ;   check_new_functions.py wv_cds_probe.il --strict \
-;     --allow runSyncIPC,wvCdsPython
-;   (runSyncIPC is in wv_cds_ipc.il, so the checker cannot see it here)
+;     --allow runSyncIPC,wvCdsPython,wvCdsIsCurrent
+;   (they live in wv_cds_ipc.il and wv_cds_instpin.il, so the checker cannot
+;   see them from here)
 
 ; The interpreter used for the python/ helpers: $WV_CDS_PYTHON when it is
 ; exported, otherwise whatever python3 resolves to. Same rule as
@@ -37,43 +36,21 @@ procedure(wvCdsPython()
 
 ; Add one net probe for the signal name nm, in window win.
 ; Returns the probe object, or nil when nothing was added.
+;
+; Device currents never reach here: the caller keeps them out with
+; wvCdsIsCurrent, because geAddNetProbe wants a net and a terminal current gets
+; a marker in the schematic instead (see wv_cds_instpin.il). Sending a current
+; name on as a path is what produced
+;   GE-2133: The object R1:1 does not exist in cellview
 procedure(wvCdsProbeNet(win nm)
-  prog((path parts r hit x mapped)
+  prog((path parts r hit x)
     hit = nil
     if(stringp(nm)
       then
-        ; A device current is not a net. Its probe path is the instance
-        ; terminal, "/I0/I1/R2/PLUS", and it is found in two steps: the table
-        ; wv_cds_instpin.il filled in while the terminal was selected, and -
-        ; when that has nothing, because wv is showing a name this session
-        ; never plotted - the same path worked out from the schematic.
-        mapped = wvCdsInstProbePath(nm)
-        unless(mapped
-          ; Not in the table. Either this session never plotted it - a name
-          ; typed into wv by hand, or one left over from an earlier Virtuoso -
-          ; or wv is showing a current under a name of its own. Work the path
-          ; out from the schematic then, the way the reference script does.
-          mapped = wvCdsInstProbePathFromSch(win nm))
-        if(mapped
-          then
-            path = mapped
-          else
-            if(rexMatchp(":[0-9*]+$" nm)
-              then
-                ; A device current whose path could not be worked out. Sending
-                ; the name on as a path is what produced
-                ; "GE-2133: The object R1:1 does not exist in cellview ...":
-                ; say what really happened rather than ask for a net that
-                ; cannot exist.
-                warn("wvCds: %s looks like a device current, but no probe path for it was found - skipped\n" nm)
-                return(nil)
-              else
-                path = ""
-                parts = parseString(nm ".")
-                foreach(x parts
-                  path = strcat(path "/" x)
-                )
-            )
+        path = ""
+        parts = parseString(nm ".")
+        foreach(x parts
+          path = strcat(path "/" x)
         )
         r = errset(geAddNetProbe(win nil path))
         hit = car(r)
@@ -94,8 +71,9 @@ procedure(wvCdsProbeNet(win nm)
 ; hand in that window - the caller only reaches this point when wv really did
 ; report a list, so a failed click never clears anything.
 procedure(wvCdsProbeNames(win names)
-  prog((n nm)
+  prog((n ncur nm)
     n = 0
+    ncur = 0
     if(win == nil
       then
         warn("wvCds: no schematic window - nothing probed\n")
@@ -111,12 +89,18 @@ procedure(wvCdsProbeNames(win names)
     ; again in here threw that away.
     errset(geDeleteAllProbe(win))
     foreach(nm names
-      if(wvCdsProbeNet(win nm)
-        then n = n + 1
+      ; wv reports currents and nets in one list, and only the nets get a
+      ; probe: a current is marked in the schematic when it is sent.
+      if(wvCdsIsCurrent(win nm)
+        then ncur = ncur + 1
+        else
+          if(wvCdsProbeNet(win nm)
+            then n = n + 1
+          )
       )
     )
-    printf("wvCds: cleared the window, then probed %d of %d net(s)\n"
-           n length(names))
+    printf("wvCds: cleared the window, then probed %d of %d signal(s); %d current(s) left to their markers\n"
+           n length(names) ncur)
     return(n)
   )
 )

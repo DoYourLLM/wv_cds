@@ -143,9 +143,13 @@ separate ports because two servers cannot share one.
   terminal on a symbol is named `<hier>.<inst>:*` when the device has two
   terminals, and `<hier>.<inst>:<n>` when it has three or more, where `n` is
   the position of that terminal's net in the device's terminal list; a terminal
-  whose net is not in that list is skipped with a warning. Currents are probed
-  at the instance terminal, `/I0/R2/PLUS`, since the name sent to wv carries no
-  terminal. A wire or net is unaffected.
+  whose net is not in that list is skipped with a warning. A current is **not
+  probed** - a schematic probe is a net, and asking for the terminal as a net,
+  `/R2:1`, is what makes Virtuoso answer "the object does not exist" - so the
+  terminal is instead marked in the schematic with a highlight ellipse over the
+  figure you selected, and the CIW says which instance-terminal path it came
+  from (`/I0/R2/PLUS`). Sending again clears the previous markers. A wire or net
+  is unaffected and still gets a probe.
 - wv takes a while to come up, so the first `Send to WV (Direct)` click often
   starts it and skips the plot; click again once it is up.
 - If the GUI's `sh dir` box is empty, **Send to WV** does nothing - it has to

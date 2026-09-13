@@ -49,8 +49,8 @@ procedure(CCSwvPlotSelectedSignals(sch_win)
     r = errset(geGetEditCellView(sch_win))
     cv = when(r car(r))
     ; Device terminals are CURRENTS, not voltages. They need different names
-    ; (see wv_cds_instpin.il) and a probe path that cannot be recovered from
-    ; those names afterwards, so it is recorded there as they are built.
+    ; and are marked in the schematic instead of probed, both of which live in
+    ; wv_cds_instpin.il.
     ;
     ; Out here, not inside the geGetSelSet loop below: a selected terminal need
     ; not appear in geGetSelSet at all, and geGetObjectSelectedSet is the call
@@ -61,11 +61,16 @@ procedure(CCSwvPlotSelectedSignals(sch_win)
         cur = wvCdsInstPinNames(car(r) pnames)
         when(cur
           ; one line per click that produced currents, so the CIW shows what
-          ; was collected as well as what each name probes
+          ; was collected as well as what each name points at
           printf("wvCds: device terminals in the selection: %L\n" cur)
           foreach(nm cur
             unless(member(nm names)
               names = append1(names nm))))))
+    ; Mark this send's terminals, and drop the markers of the previous send.
+    ; Called whether or not there were currents, so the previous ones go even
+    ; when this click had none - they mark what this tool last sent, and that
+    ; is no longer on screen.
+    wvCdsInstHlShow(cv sch_win)
     when(sel
       ; pin names of the cellview currently shown in the window
       pins = nil

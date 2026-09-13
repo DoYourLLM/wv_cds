@@ -1,8 +1,8 @@
 ; wv_cds_instpin.il - device terminal currents
 ;
 ; Plotting a net gives a voltage. Plotting a device *terminal* gives a current,
-; and that is a different signal with a different name and a different probe,
-; so it is handled here and wv_cds_signal.il calls in.
+; and that is a different signal with a different name, so it is handled here
+; and wv_cds_signal.il calls in.
 ;
 ; Naming, as worked out on the real schematic:
 ;
@@ -19,30 +19,48 @@
 ;   A terminal whose net is not in sigNames has no number to give, so it is
 ;   skipped with a warning rather than sent as a wrong signal.
 ;
-; Currents are probed at the INSTANCE TERMINAL path, the way the reference
-; script builds it (x1: subcktPath + instance~>name + "/" + nodeName), e.g.
-; "/I0/I1/R2/PLUS". That path cannot be recovered from the name we send to wv -
-; "R2:*" carries no terminal - so it is recorded here at selection time and
-; looked up again when the probe step runs. Both happen inside the same click
-; (and, for the GUI route, inside the same Virtuoso session), so the table
-; never has to outlive the session.
+; A CURRENT IS NOT PROBED. geAddNetProbe wants a net, and the instance terminal
+; path that would give the current - the reference script's
+; subcktPath + instance~>name + "/" + nodeName, e.g. "/I0/I1/R2/PLUS" - is
+; drawn in the schematic instead, as an ellipse over the terminal the user
+; selected. That is what the reference script does with it too
+; (CCSaddProbes marks the point with geAddHilightEllipse and does not probe).
+; The probe step therefore only has to RECOGNISE a current, so that a name like
+; "R1:1" is not turned into the nonsense path "/R1:1" - which is exactly what
+; geAddNetProbe answered with
+;   GE-2133: The object R1:1 does not exist in cellview
+; before.
 ;
-; The lookup is by the name wv REPORTS, and that is not always the name we
-; asked for. wv_cds_plot.sh keys ::wv_cds_lines by sx_get_name of the signal
-; sx_signal matched, so a two terminal device - requested as "R1:*" - comes
-; back as "R1:1". That name used to miss the table and fall through to the
-; plain net conversion, which turned it into the path "/R1:1" and made
-; geAddNetProbe answer "GE-2133: The object R1:1 does not exist in cellview".
-; The two terminal case therefore also records the same path under the name
-; without the terminal suffix (see wvCdsInstProbePath).
+; Recognition has three routes, and wvCdsIsCurrent tries them in order:
+;
+;   1. the table below, filled in while the terminal was selected
+;   2. the same path worked out from the schematic, for a current this session
+;      never sent - typed into wv by hand, or left over from an earlier
+;      Virtuoso, when the table is empty
+;   3. the shape of the name, ":" followed by digits or "*"
+;
+; Route 1 has to allow for the name wv REPORTS being different from the one it
+; was asked for: wv_cds_plot.sh keys ::wv_cds_lines by sx_get_name of the
+; signal sx_signal matched, so a two terminal device - requested as "R1:*" -
+; comes back as "R1:1". That name used to miss the table and fall through to
+; the plain net conversion; the two terminal case therefore also records its
+; path under the name without the terminal suffix (see wvCdsInstProbePath).
 ;
 ; Checked against the IC23.1 SKILL Reference:
 ;   geGetObjectSelectedSet( [ d_cellview ] )
 ;   makeTable( S_name [ g_default_value ] )   arrayref( g_collection g_index )
 ;   buildString( l_strings [ S_glueCharacters ] )   append1( l_list g_arg )
+;   geCreateHilightSet( d_cellview l_layerPurposePair [ g_notGlobal ] )
+;   geAddHilightEllipse( g_hlSetId l_bBox )  geDrawHilightSet( [w] [set] )
+;   geDeleteHilightSet( g_hlSetId )
 ;
 ; Verified with:
 ;   check_new_functions.py wv_cds_instpin.il --strict
+;
+; One arity warning is a known false positive of the argument counting:
+;   errset "3 of 2" - the call is errset(wvCdsInstHlSet->enable = t), one
+;                    argument, but the counter splits an assignment into
+;                    "wvCdsInstHlSet->enable", "=" and "t"
 
 ; wv name -> probe path, filled in as signals are built
 unless(boundp('wvCdsInstProbe)
@@ -148,13 +166,71 @@ procedure(wvCdsInstProbePathFromSch(win nm)
                         path = strcat(path "/" net)))))))))))
     path))
 
+; Is this signal name a device current rather than a net?
+;
+; The probe step uses this to leave currents alone, so the two routes that
+; resolve a path come first and the shape of the name is only the last resort.
+; That order matters: ":<digits>" is a good guess but it is a guess, and a net
+; whose name happens to end that way must not be dropped from the probes.
+procedure(wvCdsIsCurrent(win nm)
+  let((p)
+    p = wvCdsInstProbePath(nm)
+    unless(p
+      p = wvCdsInstProbePathFromSch(win nm))
+    unless(p
+      p = rexMatchp(":[0-9*]+$" nm))
+    p))
+
+; The boxes of the terminals this send turned into currents, and the highlight
+; set they are drawn in. The boxes are collected while the names are built, so
+; that the set is created once for the whole selection.
+unless(boundp('wvCdsInstHlBoxes)
+  wvCdsInstHlBoxes = nil)
+unless(boundp('wvCdsInstHlSet)
+  wvCdsInstHlSet = nil)
+
+; Drop the markers of the previous send, then mark this send's terminals.
+;
+; Deleted BY SET, not with geDeleteAllHilightSet: the reference script clears
+; the whole cellview that way, which would throw away highlights the user made
+; himself. An empty selection still deletes, so the markers never outlive the
+; send that put them there.
+;
+; geCreateHilightSet wants a cellview that is displayed in a window, and returns
+; a DISABLED set, and the reference says the window has to be refreshed before
+; the objects are visible - hence the enable and the geDrawHilightSet.
+procedure(wvCdsInstHlShow(cv win)
+  let((r n lpp)
+    ; the layer the reference script marks with
+    lpp = list("hilite" "drawing1")
+    when(wvCdsInstHlSet
+      errset(geDeleteHilightSet(wvCdsInstHlSet))
+      wvCdsInstHlSet = nil)
+    when(cv && wvCdsInstHlBoxes
+      r = errset(geCreateHilightSet(cv lpp nil))
+      wvCdsInstHlSet = when(r car(r))
+      when(wvCdsInstHlSet
+        errset(wvCdsInstHlSet->enable = t)
+        n = 0
+        foreach(b wvCdsInstHlBoxes
+          when(car(errset(geAddHilightEllipse(wvCdsInstHlSet b)))
+            n = n + 1))
+        errset(geDrawHilightSet(win wvCdsInstHlSet))
+        unless(n == length(wvCdsInstHlBoxes)
+          warn("wvCds: marked %d of %d terminal(s) in the schematic\n"
+               n length(wvCdsInstHlBoxes))))
+      unless(wvCdsInstHlSet
+        warn("wvCds: could not open a highlight set - terminals left unmarked\n")))
+    wvCdsInstHlBoxes = nil))
+
 ; One selected terminal -> the name to send to wv, or nil to skip it.
 ; pnames is the list of instances the window has descended into, so the name
 ; carries the same hierarchy prefix a net from this window would. The probe
-; path is recorded as the name is built, and wvCdsInstProbePathFromSch can
-; work the same path out again from the name alone.
+; path is recorded as the name is built - wvCdsInstProbePathFromSch can work
+; the same path out again from the name alone - and the terminal's box is left
+; in wvCdsInstHlBoxes for wvCdsInstHlShow to mark.
 procedure(wvCdsInstPinName(g pnames)
-  prog((fig inst net sigs instName sig n idx wvName path instKey)
+  prog((fig inst net sigs instName sig n idx wvName path instKey box)
     wvName = nil
     fig = car(g)
     ; group = (figure ((instance 0 0 0))): car(car(car(cdr(g)))) is the
@@ -193,16 +269,27 @@ procedure(wvCdsInstPinName(g pnames)
                 path = strcat("/" buildString(append1(pnames instName) "/")
                               "/" net)
                 wvCdsInstProbe[wvName] = path
-                ; The probe is driven by the names wv reports, and for the two
-                ; terminal case that is not the name just asked for: sent
-                ; "R1:*", wv answers "R1:1". Same instance, one current, so
-                ; the path also answers to the name with the terminal suffix
-                ; cut off. Three or more terminals record the exact name only:
-                ; there, guessing between several currents is what would probe
+                ; The probe step is driven by the names wv reports, and for the
+                ; two terminal case that is not the name just asked for: sent
+                ; "R1:*", wv answers "R1:1". Same instance, one current, so the
+                ; path also answers to the name with the terminal suffix cut
+                ; off. Three or more terminals record the exact name only:
+                ; there, guessing between several currents is what would pick
                 ; the wrong one.
                 when(sig == "*"
                   wvCdsInstProbe[instKey] = path)
-                printf("wvCds: current %s probes %s\n" wvName path)
+                ; the terminal is marked, not probed: the box of the figure the
+                ; user selected is what the marker is drawn over
+                box = car(errset(fig~>bBox))
+                if(box
+                  then
+                    wvCdsInstHlBoxes = append1(wvCdsInstHlBoxes box)
+                    printf("wvCds: current %s -> %s (marked in the schematic, not probed)\n"
+                           wvName path)
+                  else
+                    printf("wvCds: current %s -> %s (not probed; no figure box to mark)\n"
+                           wvName path)
+                )
               )
             )
           )

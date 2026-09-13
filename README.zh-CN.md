@@ -132,8 +132,11 @@ skill 和 python 这两半各自的说明见 `skill/README.md`、`python/README.
   端口随它释放，不会留一个残进程占着。
 - **右键器件端子画的是电流，不是电压。** 符号上的端子，两个端子时名字是
   `<层次>.<inst>:*`；三个及以上时是 `<层次>.<inst>:<n>`，n 是该端子的 net 在器件
-  端子表里的位置；net 不在表里的端子会被跳过并 warn 一行。电流的 probe 打在
-  实例端子上 `/I0/R2/PLUS`（送到 wv 的名字里不含端子名）。net / 导线不受影响。
+  端子表里的位置；net 不在表里的端子会被跳过并 warn 一行。电流**不加 probe**——
+  原理图的 probe 是 net，把端子名当 net 递过去（`/R2:1`）就会得到 "the object
+  does not exist"；改成在你选中的那个 figure 上用 highlight 椭圆圈出来，CIW 里
+  同时打印它对应的实例端子路径（`/I0/R2/PLUS`）。再 send 一次会先清掉上一次的圈。
+  net / 导线不受影响，照旧 probe。
 - wv 启动要一会儿，所以第一次点 `Send to WV (Direct)` 往往只是把它启动起来、
   画图被跳过；等它起来后再点一次。
 - GUI 的 `sh dir` 框如果空着，**Send to WV** 不会有任何动作 —— 它必须指向本包。
