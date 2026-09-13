@@ -35,15 +35,6 @@ cd wv_cds
 ./install.sh
 ```
 
-Using GitHub's **Download ZIP** instead? It unpacks to `wv_cds-main`, so the
-`cd` is different:
-
-```bash
-unzip wv_cds-main.zip
-cd wv_cds-main
-./install.sh
-```
-
 **2. Add one line to the `.cdsinit` in the directory you start Virtuoso from**
 
 ```skill

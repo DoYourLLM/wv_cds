@@ -36,15 +36,6 @@ cd wv_cds
 ./install.sh
 ```
 
-如果是用 GitHub 的 **Download ZIP** 下载的，解压出来叫 `wv_cds-main`，不是
-`wv_cds`：
-
-```bash
-unzip wv_cds-main.zip
-cd wv_cds-main
-./install.sh
-```
-
 **2. 往「启动 Virtuoso 的那个目录」里的 `.cdsinit` 加一行**
 
 ```skill
