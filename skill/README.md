@@ -16,6 +16,7 @@ The half that runs inside Virtuoso. Package-wide setup:
 | `wv_cds_table.il` | Virtuoso form window with the net list (Add / Remove) |
 | `wv_cds_menu.il` | banner menu `Example > wvcds`, and the selection wrappers |
 | `schRMB.il` | the net right-click menu items |
+| `wv_cds_termtest.il` | not loaded automatically: a standalone check for where the terminal marker lands (`wvTestTerminal()`) |
 
 `cdsinit.wv_cds` is a template: Virtuoso auto-loads a `.cdsinit` from the
 directory you start it in, so rename it to `.cdsinit` there, or copy its single
