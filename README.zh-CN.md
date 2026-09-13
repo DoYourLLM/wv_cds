@@ -115,9 +115,9 @@ skill 和 python 这两半各自的说明见 `skill/README.md`、`python/README.
 
 ## 注意事项
 
-- **一个信号只画一次。** `wv_cds_plot.sh` 把已经交给 wv 的名字记在 wv 内部的
-  一个 Tcl 变量里（`::wv_cds_plotted`），所以同一个 net 再点一次不会叠出重复
-  的曲线。重启 wv、或者打开文件，都会重置。
+- **一个信号只画一次。** `wv_cds_plot.sh` 不靠记名字，而是**直接问 wv**：每次
+  `sx_display` 返回的 line 对象都留着，下次点的时候拿它探一下。你在 wv 里删掉的
+  曲线会返回空字符串 —— 所以还显示着的会跳过，你删掉的会重新画上。
 - wv 启动要一会儿，所以第一次点 `Send to WV (Direct)` 往往只是把它启动起来、
   画图被跳过；等它起来后再点一次。
 - GUI 的 `sh dir` 框如果空着，**Send to WV** 不会有任何动作 —— 它必须指向本包。

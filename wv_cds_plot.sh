@@ -11,16 +11,22 @@
 #   Opens a short TCP connection to 127.0.0.1:61888 - wv's own RPC server,
 #   which wv_rpc_server.tcl starts inside wv - and runs
 #
-#     set matches [ sx_signal <pattern> ]
-#     foreach signal $matches {
-#         if {[lsearch -exact $::wv_cds_plotted $signal] < 0} {
-#             sx_display $signal ; lappend ::wv_cds_plotted $signal
-#         }
-#     }
+#     set lines [ sx_display $signal ]      ;# returns the line objects
+#     sx_get_name <line object>             ;# "" once the line is gone
 #
-#   The bookkeeping variable ::wv_cds_plotted lives INSIDE wv, so a signal is
-#   displayed at most once per wv session and the memory disappears with wv.
-#   wv_cds_openfsdb.sh resets the list when it opens a file.
+#   "Already displayed" is NOT remembered by name. wv itself is asked, by
+#   keeping the line object each sx_display returned and probing it with
+#   sx_get_name: a live line answers its signal name, a line you deleted in
+#   the wv GUI answers the empty string. So deleting a curve in wv is enough
+#   to make the next click plot it again.
+#
+#   ::wv_cds_lines lives INSIDE wv (name -> line objects), so it dies with wv
+#   and nothing has to be cleaned up on the Virtuoso side.
+#
+#   Only sx_signal, sx_display and sx_get_name are used. The commands that
+#   walk a waveview (sx_first_panel / sx_first_line / sx_next_*) are
+#   deliberately avoided: they make wv recompute its layout, which blocks the
+#   interpreter the RPC server is running on, and the call hangs.
 #
 #   Output:
 #     <n> new, <m> already plotted   wv accepted the request
@@ -36,13 +42,26 @@ wv1() {
     # Note: [ and ] are left bare inside the double quotes - a backslash
     # does NOT escape them in bash, so \[ would reach wv as a literal
     # backslash and turn the command substitution into a plain string.
-    cmd="if {![info exists ::wv_cds_plotted]} {set ::wv_cds_plotted {}}"
-    cmd="$cmd ; set matches [ sx_signal ${pattern} ]"
-    cmd="$cmd ; set new 0"
-    cmd="$cmd ; foreach signal \$matches {"
-    cmd="$cmd if {[lsearch -exact \$::wv_cds_plotted \$signal] < 0}"
-    cmd="$cmd { sx_display \$signal ; lappend ::wv_cds_plotted \$signal ; incr new } }"
-    cmd="$cmd ; format {%d new, %d already plotted} \$new [expr {[llength \$matches] - \$new}]"
+    #
+    # Every variable is wvc_-prefixed on purpose: wv_rpc_server.tcl runs this
+    # with uplevel #0, so each of them becomes a global in wv's own
+    # interpreter - a bare "alive" or "new" could collide with wv's internals.
+    cmd="if {![info exists ::wv_cds_lines]} {set ::wv_cds_lines [dict create]}"
+    cmd="$cmd ; set wvc_matches [ sx_signal ${pattern} ]"
+    cmd="$cmd ; set wvc_new 0 ; set wvc_skip 0"
+    cmd="$cmd ; foreach wvc_sig \$wvc_matches {"
+    cmd="$cmd set wvc_nm [sx_get_name \$wvc_sig]"
+    cmd="$cmd ; set wvc_live 0"
+    # probe every line object we kept for this signal; one survivor is enough
+    cmd="$cmd ; if {[dict exists \$::wv_cds_lines \$wvc_nm]} {"
+    cmd="$cmd foreach wvc_old [dict get \$::wv_cds_lines \$wvc_nm] {"
+    cmd="$cmd set wvc_alive 0"
+    cmd="$cmd ; if {![catch {sx_get_name \$wvc_old} wvc_nm2]} { if {\$wvc_nm2 ne \"\"} { set wvc_alive 1 } }"
+    cmd="$cmd ; if {\$wvc_alive} { set wvc_live 1 ; break } } }"
+    cmd="$cmd ; if {\$wvc_live} { incr wvc_skip } else {"
+    cmd="$cmd set wvc_lines [sx_display \$wvc_sig]"
+    cmd="$cmd ; if {[llength \$wvc_lines]} { dict set ::wv_cds_lines \$wvc_nm \$wvc_lines ; incr wvc_new } } }"
+    cmd="$cmd ; format {%d new, %d already plotted} \$wvc_new \$wvc_skip"
 
     # { ...; } so the redirect failure is silenced: a trailing 2>/dev/null on
     # the exec does not take effect, because the /dev/tcp redirect fails first

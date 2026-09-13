@@ -117,10 +117,11 @@ separate ports because two servers cannot share one.
 
 ## Notes
 
-- **A signal is displayed once.** `wv_cds_plot.sh` remembers the names it has
-  handed to wv in a Tcl variable inside wv (`::wv_cds_plotted`), so clicking the
-  same net again does not stack a duplicate curve. Restarting wv, or opening a
-  file, resets it.
+- **A signal is displayed once.** `wv_cds_plot.sh` asks wv itself instead of
+  remembering names: it keeps the line object each display call returned, and
+  probes it on the next click. A line you deleted in wv answers the empty
+  string, so a net that is already on screen is skipped while one whose curve
+  you deleted is plotted again.
 - wv takes a while to come up, so the first `Send to WV (Direct)` click often
   starts it and skips the plot; click again once it is up.
 - If the GUI's `sh dir` box is empty, **Send to WV** does nothing - it has to

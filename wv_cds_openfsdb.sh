@@ -22,10 +22,12 @@ wv1() {
     local filePath="$1"
     local payload r
 
-    # ::wv_cds_plotted is wv_cds_plot.sh's "already displayed" list; a fresh
-    # file starts with an empty display, so reset it here. The saved reply is
-    # returned unchanged.
-    payload="set r [ sx_open_sim_file_read \"${filePath}\" ] ; set ::wv_cds_plotted {} ; set r"
+    # ::wv_cds_lines is wv_cds_plot.sh's name -> line-object map. Opening a
+    # file wipes wv's display, so every handle in it is about to go stale;
+    # clearing it here makes the next plot re-display everything instead of
+    # relying on each probe returning empty. The saved reply is returned
+    # unchanged.
+    payload="set r [ sx_open_sim_file_read \"${filePath}\" ] ; set ::wv_cds_lines [dict create] ; set r"
 
     if ! { exec 3<>/dev/tcp/127.0.0.1/61888; } 2>/dev/null; then
         printf 'refused\n'
