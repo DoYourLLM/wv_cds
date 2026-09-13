@@ -28,13 +28,14 @@
 ;   hiGetCommandPoint( [w_windowId] [g_dontAdjust] )
 ;   schGetEnv( t_variableName )  geGetObjectSelectedSet( [ d_cellview ] )
 ;   dbGetInstTransform( l_dbInstId )  dbTransformPoint( l_point l_list )
-;   geCreateHilightSet( d_cellview l_layerPurposePair [ g_notGlobal ] )
+;   geEditToWindowPoint( w_windowId l_editCellViewPoint )
+;   geCreateWindowHilightSet( w_windowId l_layerPurposePair [ g_notGlobal ] )
 ;   geAddHilightEllipse( g_hlSetId l_bBox )  geDeleteHilightSet( g_hlSetId )
 ;
 ; Verified with:
 ;   check_new_functions.py wv_cds_termtest.il --strict \
-;     --allow wvCdsInstPinName
-;   (it is in wv_cds_instpin.il, so the checker cannot see it from here)
+;     --allow wvCdsInstPinName,wvCdsInstMarkBox
+;   (they are in wv_cds_instpin.il, so the checker cannot see them from here)
 ;
 ; One arity warning is a known false positive of the argument counting:
 ;   errset "3 of 2" - the call is errset(set->enable = t), one argument, but
@@ -46,10 +47,12 @@
 unless(boundp('wvTestTermSets)
   wvTestTermSets = nil)
 
-; one circle of radius r around the point c, in its own highlight set
-procedure(wvTestTermCircle(cv c r)
+; one circle of radius r around the point c, in its own highlight set.
+; The set is created ON THE WINDOW, exactly as wv_cds_instpin.il does, because
+; the point is in the window's coordinates.
+procedure(wvTestTermCircle(win c r)
   let((set)
-    set = car(errset(geCreateHilightSet(cv list("hilite" "drawing1") nil)))
+    set = car(errset(geCreateWindowHilightSet(win list("hilite" "drawing1") nil)))
     when(set
       errset(set->enable = t)
       errset(geAddHilightEllipse(set
@@ -78,7 +81,7 @@ procedure(wvTestTermDelta(a b)
   list(car(a) - car(b) car(cdr(a)) - car(cdr(b))))
 
 procedure(wvTestTerminal()
-  let((win cv pt grid sel g fig inst hier b c xform c2 r)
+  let((win cv pt grid sel g fig inst hier b c c2 c3 xform r)
     win = hiGetCurrentWindow()
     cv = geGetEditCellView(win)
     grid = schGetEnv("schSnapSpacing")
@@ -115,10 +118,23 @@ procedure(wvTestTerminal()
           printf("transform     : %L\n" xform)
           c2 = car(errset(dbTransformPoint(c xform)))
           printf("transformed   : %L\n" c2)
+          ; and out of the cellview being edited, if the window is descended:
+          ; the drawing functions take the window's coordinates
+          c3 = car(errset(geEditToWindowPoint(win c2)))
+          printf("to window     : %L\n" c3)
+          when(c3
+            c2 = c3)
           when(c && pt
             printf("delta raw     : %L\n" wvTestTermDelta(c pt)))
           when(c2 && pt
             printf("delta xform   : %L\n" wvTestTermDelta(c2 pt)))
+          ; what the package itself works out for this terminal, when it is
+          ; loaded - the small circle below is drawn where that box says
+          if(boundp('wvCdsInstMarkBox)
+            then
+              printf("package box   : %L\n" wvCdsInstMarkBox(win fig hier))
+            else
+              printf("package box   : wv_cds_instpin.il is not loaded\n"))
           ; which name wv_cds_instpin.il would send for this terminal
           if(boundp('wvCdsInstPinName)
             then
@@ -128,11 +144,11 @@ procedure(wvTestTerminal()
           r = 1.5 * grid
           when(grid && c2
             ; small: where the marker code puts it
-            wvTestTermCircle(cv c2 r))
+            wvTestTermCircle(win c2 r))
           r = 4.5 * grid
           when(grid && pt
             ; big: around the click, three times as wide
-            wvTestTermCircle(cv pt r))
+            wvTestTermCircle(win pt r))
         )
     )
     printf("=== end: %d circle set(s) drawn, wvTestTermClear() removes them ===\n"

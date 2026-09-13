@@ -72,7 +72,7 @@ procedure(wvCdsProbeNet(win nm)
 ; hand in that window - the caller only reaches this point when wv really did
 ; report a list, so a failed click never clears anything.
 procedure(wvCdsProbeNames(win names)
-  prog((n ncur nmark nm cv)
+  prog((n ncur nmark nm)
     n = 0
     ncur = 0
     if(win == nil
@@ -80,7 +80,6 @@ procedure(wvCdsProbeNames(win names)
         warn("wvCds: no schematic window - nothing probed\n")
         return(n)
     )
-    cv = car(errset(geGetEditCellView(win)))
     ; names may be nil, and that is NOT "do nothing". The caller only reaches
     ; this point when wv answered, so an empty list means every signal this
     ; tool plotted is gone from wv - and then every probe here goes too.
@@ -103,7 +102,7 @@ procedure(wvCdsProbeNames(win names)
           )
       )
     )
-    nmark = wvCdsInstMarkShow(cv win names)
+    nmark = wvCdsInstMarkShow(win names)
     printf("wvCds: cleared the window, then probed %d of %d signal(s) and marked %d of %d current(s)\n"
            n length(names) nmark ncur)
     return(n)

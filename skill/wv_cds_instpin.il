@@ -59,10 +59,11 @@
 ;   geGetObjectSelectedSet( [ d_cellview ] )
 ;   makeTable( S_name [ g_default_value ] )   arrayref( g_collection g_index )
 ;   buildString( l_strings [ S_glueCharacters ] )   append1( l_list g_arg )
-;   geCreateHilightSet( d_cellview l_layerPurposePair [ g_notGlobal ] )
+;   geCreateWindowHilightSet( w_windowId l_layerPurposePair [ g_notGlobal ] )
 ;   geAddHilightEllipse( g_hlSetId l_bBox )  geDrawHilightSet( [w] [set] )
-;   geDeleteHilightSet( g_hlSetId )
+;   geDeleteHilightSet( g_hlSetId )  geIsValidHilightSet( h_hlSetId )
 ;   dbGetInstTransform( l_dbInstId )  dbTransformPoint( l_point l_list )
+;   geEditToWindowPoint( w_windowId l_editCellViewPoint )  hiRedraw( [w] )
 ;   schGetEnv( t_variableName )  mapcar( u_func l_arg1 ... )
 ;
 ; Verified with:
@@ -202,9 +203,39 @@ procedure(wvCdsIsCurrent(win nm)
       p = rexMatchp(":[0-9*]+$" nm))
     p))
 
-; The highlight set the terminal markers are drawn in.
-unless(boundp('wvCdsInstHlSet)
-  wvCdsInstHlSet = nil)
+; Every highlight set these markers have been drawn in, NOT just the last one.
+;
+; The sets are created ON THE WINDOW (geCreateWindowHilightSet) and not on the
+; cellview, because the coordinates are the window's: the marker box comes out
+; of wvCdsInstMarkBox in displayed coordinates. A cellview set, in contrast,
+; belongs to the cellview it was made in, and a window shows a different
+; cellview once the user edits in place - so a circle made at the top level
+; would be drawn from that cellview's coordinates while a sub-cellview is on
+; screen, which is a circle left behind on nothing.
+;
+; Keeping only the newest set made that worse: the older one could never be
+; found again to delete. A set whose delete does not go through stays on the
+; list and is retried on the next round.
+unless(boundp('wvCdsInstHlSets)
+  wvCdsInstHlSets = nil)
+
+; Straighten that list out: a set that is no longer valid is dropped, and one
+; that refuses to be deleted is kept for the next try. Returns how many are
+; still waiting, which is normally 0.
+procedure(wvCdsInstHlDrop()
+  let((keep)
+    keep = nil
+    foreach(s wvCdsInstHlSets
+      if(car(errset(geIsValidHilightSet(s)))
+        then
+          unless(car(errset(geDeleteHilightSet(s)))
+            keep = cons(s keep))
+        else
+          nil
+      )
+    )
+    wvCdsInstHlSets = reverse(keep)
+    length(wvCdsInstHlSets)))
 
 ; The box, in the schematic's own coordinates, that marks one terminal: the
 ; reference script's small ellipse, one and a half snap spacings across.
@@ -225,34 +256,50 @@ unless(boundp('wvCdsInstHlSet)
 ; dbTransformPoint applies it, which is the reference's own example: how "a
 ; certain shape (such as a pin on the master) in an instance of a cell is
 ; repositioned". With no path to walk (a figure already at the top level) there
-; is nothing to convert and the box is used as it comes.
+; is nothing to convert.
+;
+; That leaves the point in the coordinates of the CELLVIEW BEING EDITED, and
+; when the window is descended into an instance that is not what the drawing
+; functions take: geWindowToEditPoint's reference says the two systems differ
+; exactly there - "geWindowToEditPoint applies the top-level cellview's
+; coordinates to the cellview being edited; geEditToWindowPoint does the
+; reverse". Without that last step the marker for a terminal inside the
+; sub-schematic lands one edit-in-place transform away from the terminal.
 ;
 ; nil when the figure has no bbox to mark.
-procedure(wvCdsInstMarkBox(fig hierPath)
-  let((bBox xform ll ur c g h box)
+procedure(wvCdsInstMarkBox(win fig hierPath)
+  let((bBox xform ll ur c w g h dw dh box)
     box = nil
     bBox = car(errset(fig~>bBox))
     when(bBox
       ll = car(bBox)
       ur = car(cdr(bBox))
+      ; the middle of the shape, in the coordinates it comes in
+      c = list((car(ll) + car(ur)) / 2
+               (car(cdr(ll)) + car(cdr(ur))) / 2)
       xform = car(errset(dbGetInstTransform(mapcar('car hierPath))))
       when(xform
-        ll = car(errset(dbTransformPoint(ll xform)))
-        ur = car(errset(dbTransformPoint(ur xform))))
-      when(ll && ur
-        ; the middle of the shape
-        c = list((car(ll) + car(ur)) / 2
-                 (car(cdr(ll)) + car(cdr(ur))) / 2)
+        w = car(errset(dbTransformPoint(c xform)))
+        when(w
+          c = w))
+      w = car(errset(geEditToWindowPoint(win c)))
+      when(w
+        c = w)
+      when(c
+        ; the size does not depend on the frame, so it is taken from the shape
+        dw = (car(ur) - car(ll)) / 2
+        dh = (car(cdr(ur)) - car(cdr(ll))) / 2
         g = schGetEnv("schSnapSpacing")
         if(g
           then
+            ; the reference script's marker: one and a half snap spacings
+            ; across, so it stays a small circle at any zoom
             h = 1.5 * g
-            box = list(list(car(c) - h car(cdr(c)) - h)
-                       list(car(c) + h car(cdr(c)) + h))
-          else
-            ; no snap spacing to size it with: the shape's own box
-            box = list(ll ur)
+            dw = h
+            dh = h
         )
+        box = list(list(car(c) - dw car(cdr(c)) - dh)
+                   list(car(c) + dw car(cdr(c)) + dh))
       )
     )
     box))
@@ -271,39 +318,44 @@ procedure(wvCdsInstMarkBox(fig hierPath)
 ;
 ; Deleted BY SET before rebuilding, not with geDeleteAllHilightSet the way the
 ; reference script cleans up, which would throw away highlights the user made
-; himself. A round with no currents still deletes, so markers never outlive the
-; curves they belong to.
+; himself. Every set ever drawn is deleted, not just the last one - see
+; wvCdsInstHlSets. A round with no currents still deletes, so markers never
+; outlive the curves they belong to.
 ;
-; geCreateHilightSet wants a cellview that is displayed in a window, and returns
-; a DISABLED set, and the reference says the window has to be refreshed before
-; the objects are visible - hence the enable and the geDrawHilightSet.
+; geCreateWindowHilightSet takes the window and not a cellview, which is what
+; the displayed coordinates of wvCdsInstMarkBox are for, and it returns a
+; DISABLED set, and the reference says the window has to be refreshed before the
+; objects are visible - hence the enable, the geDrawHilightSet and the hiRedraw
+; at the end, without which a circle that has just been deleted keeps being
+; painted.
 ;
 ; Returns how many were marked. A name wv is showing that this session never
 ; sent has no figure recorded for it, and a figure with no bbox cannot be drawn:
 ; both are counted as currents but not marked.
-procedure(wvCdsInstMarkShow(cv win names)
-  let((r n lpp e nm box)
+procedure(wvCdsInstMarkShow(win names)
+  let((r set n lpp e nm box)
     ; the layer the reference script marks with
     lpp = list("hilite" "drawing1")
-    when(wvCdsInstHlSet
-      errset(geDeleteHilightSet(wvCdsInstHlSet))
-      wvCdsInstHlSet = nil)
+    wvCdsInstHlDrop()
     n = 0
-    when(cv
-      r = errset(geCreateHilightSet(cv lpp nil))
-      wvCdsInstHlSet = when(r car(r))
-      when(wvCdsInstHlSet
-        errset(wvCdsInstHlSet->enable = t)
+    when(win
+      r = errset(geCreateWindowHilightSet(win lpp nil))
+      set = when(r car(r))
+      when(set
+        wvCdsInstHlSets = cons(set wvCdsInstHlSets)
+        errset(set->enable = t)
         foreach(nm names
           e = wvCdsInstMarkOf(nm)
           when(e
-            box = wvCdsInstMarkBox(car(e) car(cdr(e)))
+            box = wvCdsInstMarkBox(win car(e) car(cdr(e)))
             when(box
-              when(car(errset(geAddHilightEllipse(wvCdsInstHlSet box)))
+              when(car(errset(geAddHilightEllipse(set box)))
                 n = n + 1))))
-        errset(geDrawHilightSet(win wvCdsInstHlSet)))
-      unless(wvCdsInstHlSet
+        errset(geDrawHilightSet(win set)))
+      unless(set
         warn("wvCds: could not open a highlight set - terminals left unmarked\n")))
+    ; repaint, so a set deleted a moment ago stops being drawn at once
+    errset(hiRedraw(win))
     n))
 
 ; One selected terminal -> the name to send to wv, or nil to skip it.
