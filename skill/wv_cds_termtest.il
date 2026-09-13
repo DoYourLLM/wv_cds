@@ -18,8 +18,10 @@
 ; off, which is what decides between "the figure bbox is in the instance's
 ; coordinates" and "it is in the schematic's".
 ;
-; wvTestTermClear() removes the circles again. Nothing here talks to wv, and
-; nothing here changes any file.
+; Each run ADDS its circles and leaves the earlier ones in place, so several
+; terminals can be checked one after another - the line at the top of the
+; output says how many are drawn. wvTestTermClear() removes all of them.
+; Nothing here talks to wv, and nothing here changes any file.
 ;
 ; Checked against the IC23.1 SKILL Reference:
 ;   hiGetCurrentWindow()  geGetEditCellView( [w_windowId] )
@@ -81,8 +83,9 @@ procedure(wvTestTerminal()
     cv = geGetEditCellView(win)
     grid = schGetEnv("schSnapSpacing")
     pt = hiGetCommandPoint(win)
-    wvTestTermClear()
     printf("\n=== wv_cds terminal test ===\n")
+    printf("circles drawn : %d from earlier picks - wvTestTermClear() removes them\n"
+           length(wvTestTermSets))
     printf("cellview      : %L\n" cv)
     printf("snap spacing  : %L\n" grid)
     printf("click point   : %L\n" pt)
@@ -132,7 +135,8 @@ procedure(wvTestTerminal()
             wvTestTermCircle(cv pt r))
         )
     )
-    printf("=== end ===\n")
+    printf("=== end: %d circle set(s) drawn, wvTestTermClear() removes them ===\n"
+           length(wvTestTermSets))
   ))
 
 printf("wv_cds_termtest.il loaded - wvTestTerminal() with a terminal selected\n")
