@@ -22,9 +22,13 @@
 ; A CURRENT IS NOT PROBED. geAddNetProbe wants a net, and the instance terminal
 ; path that would give the current - the reference script's
 ; subcktPath + instance~>name + "/" + nodeName, e.g. "/I0/I1/R2/PLUS" - is
-; drawn in the schematic instead, as an ellipse over the terminal the user
-; selected. That is what the reference script does with it too
-; (CCSaddProbes marks the point with geAddHilightEllipse and does not probe).
+; drawn in the schematic instead: the reference script's small ellipse around
+; the point the command was invoked at, plus the selected figure itself,
+; highlighted through the instance path it lives in. That is what the reference
+; script does with the terminal it finds - CCSaddProbes marks the point with
+; geAddHilightEllipse and does not probe - and it is why the figure's own bbox
+; is NOT used for the ellipse: see wvCdsInstHlPointBox.
+;
 ; The probe step therefore only has to RECOGNISE a current, so that a name like
 ; "R1:1" is not turned into the nonsense path "/R1:1" - which is exactly what
 ; geAddNetProbe answered with
@@ -51,8 +55,11 @@
 ;   makeTable( S_name [ g_default_value ] )   arrayref( g_collection g_index )
 ;   buildString( l_strings [ S_glueCharacters ] )   append1( l_list g_arg )
 ;   geCreateHilightSet( d_cellview l_layerPurposePair [ g_notGlobal ] )
+;   geAddHilightFig( g_hlSetId d_figId [g_drawAll] [l_hierPath] [l_vertex] )
 ;   geAddHilightEllipse( g_hlSetId l_bBox )  geDrawHilightSet( [w] [set] )
 ;   geDeleteHilightSet( g_hlSetId )
+;   hiGetCommandPoint( [w_windowId] [g_dontAdjust] )  gePointToFig( [w] [i] [l] )
+;   schGetEnv( t_variableName )
 ;
 ; Verified with:
 ;   check_new_functions.py wv_cds_instpin.il --strict
@@ -181,15 +188,50 @@ procedure(wvCdsIsCurrent(win nm)
       p = rexMatchp(":[0-9*]+$" nm))
     p))
 
-; The boxes of the terminals this send turned into currents, and the highlight
-; set they are drawn in. The boxes are collected while the names are built, so
-; that the set is created once for the whole selection.
-unless(boundp('wvCdsInstHlBoxes)
-  wvCdsInstHlBoxes = nil)
+; The figures this send turned into currents, as ( figure hierPath ) pairs, and
+; the highlight set they are drawn in. Both are collected while the names are
+; built, so that the set is created once for the whole selection.
+unless(boundp('wvCdsInstHlFigs)
+  wvCdsInstHlFigs = nil)
 unless(boundp('wvCdsInstHlSet)
   wvCdsInstHlSet = nil)
 
-; Drop the markers of the previous send, then mark this send's terminals.
+; The ellipse the reference script draws, around the point the command was
+; invoked at: one and a half snap spacings across, in user units.
+;
+; A POINT, not the figure's own bbox, and that is the whole reason this works.
+; geGetObjectSelectedSet describes a terminal as a figure plus the instance path
+; it lives in - ((db:3865864 ((db:38370404 0 0 0)))), where the 0 0 0 are the
+; member instance, row and column and NOT coordinates - and a figure inside an
+; instance is in that instance's coordinate system, so its bbox drawn straight
+; into the schematic lands wherever the instance's own origin is. The point the
+; user acted on is already in schematic coordinates, so it needs no transform.
+;
+; nil when there is no usable point: no last press in this window (the send came
+; from the form or the banner menu), or a press that is not over the drawing.
+procedure(wvCdsInstHlPointBox(win)
+  let((pt grid box)
+    pt = hiGetCommandPoint(win)
+    when(pt && gePointToFig(win nil pt)
+      grid = schGetEnv("schSnapSpacing")
+      when(grid
+        box = list(car(pt)-1.5*grid:cadr(pt)-1.5*grid
+                   car(pt)+1.5*grid:cadr(pt)+1.5*grid)))
+    box))
+
+; Add the figure itself, which needs no coordinates at all: the path from
+; geGetObjectSelectedSet is exactly the l_hierPath geAddHilightFig wants for a
+; figure inside an instance. Without it the pin of an instance does not draw,
+; so it is tried again without the path for a figure that needs none.
+procedure(wvCdsInstHlFigAdd(fig hierPath)
+  let((r)
+    r = errset(geAddHilightFig(wvCdsInstHlSet fig nil hierPath))
+    unless(car(r)
+      r = errset(geAddHilightFig(wvCdsInstHlSet fig nil)))
+    car(r)))
+
+; Drop the markers of the previous send, then mark this send's terminals: the
+; point the reference script uses, plus the figures themselves.
 ;
 ; Deleted BY SET, not with geDeleteAllHilightSet: the reference script clears
 ; the whole cellview that way, which would throw away highlights the user made
@@ -200,37 +242,40 @@ unless(boundp('wvCdsInstHlSet)
 ; a DISABLED set, and the reference says the window has to be refreshed before
 ; the objects are visible - hence the enable and the geDrawHilightSet.
 procedure(wvCdsInstHlShow(cv win)
-  let((r n lpp)
+  let((r n lpp box)
     ; the layer the reference script marks with
     lpp = list("hilite" "drawing1")
     when(wvCdsInstHlSet
       errset(geDeleteHilightSet(wvCdsInstHlSet))
       wvCdsInstHlSet = nil)
-    when(cv && wvCdsInstHlBoxes
+    when(cv && wvCdsInstHlFigs
       r = errset(geCreateHilightSet(cv lpp nil))
       wvCdsInstHlSet = when(r car(r))
       when(wvCdsInstHlSet
         errset(wvCdsInstHlSet->enable = t)
+        box = wvCdsInstHlPointBox(win)
+        when(box
+          errset(geAddHilightEllipse(wvCdsInstHlSet box)))
         n = 0
-        foreach(b wvCdsInstHlBoxes
-          when(car(errset(geAddHilightEllipse(wvCdsInstHlSet b)))
+        foreach(e wvCdsInstHlFigs
+          when(wvCdsInstHlFigAdd(car(e) car(cdr(e)))
             n = n + 1))
         errset(geDrawHilightSet(win wvCdsInstHlSet))
-        unless(n == length(wvCdsInstHlBoxes)
+        unless(n == length(wvCdsInstHlFigs)
           warn("wvCds: marked %d of %d terminal(s) in the schematic\n"
-               n length(wvCdsInstHlBoxes))))
+               n length(wvCdsInstHlFigs))))
       unless(wvCdsInstHlSet
         warn("wvCds: could not open a highlight set - terminals left unmarked\n")))
-    wvCdsInstHlBoxes = nil))
+    wvCdsInstHlFigs = nil))
 
 ; One selected terminal -> the name to send to wv, or nil to skip it.
 ; pnames is the list of instances the window has descended into, so the name
 ; carries the same hierarchy prefix a net from this window would. The probe
 ; path is recorded as the name is built - wvCdsInstProbePathFromSch can work
-; the same path out again from the name alone - and the terminal's box is left
-; in wvCdsInstHlBoxes for wvCdsInstHlShow to mark.
+; the same path out again from the name alone - and the figure, with the
+; instance path it lives in, is left in wvCdsInstHlFigs for wvCdsInstHlShow.
 procedure(wvCdsInstPinName(g pnames)
-  prog((fig inst net sigs instName sig n idx wvName path instKey box)
+  prog((fig inst net sigs instName sig n idx wvName path instKey)
     wvName = nil
     fig = car(g)
     ; group = (figure ((instance 0 0 0))): car(car(car(cdr(g)))) is the
@@ -278,18 +323,13 @@ procedure(wvCdsInstPinName(g pnames)
                 ; the wrong one.
                 when(sig == "*"
                   wvCdsInstProbe[instKey] = path)
-                ; the terminal is marked, not probed: the box of the figure the
-                ; user selected is what the marker is drawn over
-                box = car(errset(fig~>bBox))
-                if(box
-                  then
-                    wvCdsInstHlBoxes = append1(wvCdsInstHlBoxes box)
-                    printf("wvCds: current %s -> %s (marked in the schematic, not probed)\n"
-                           wvName path)
-                  else
-                    printf("wvCds: current %s -> %s (not probed; no figure box to mark)\n"
-                           wvName path)
-                )
+                ; the terminal is marked, not probed: the figure the user
+                ; selected, together with the instance path it lives in, which
+                ; is what geAddHilightFig needs to draw a figure that sits
+                ; inside an instance
+                wvCdsInstHlFigs = append1(wvCdsInstHlFigs list(fig car(cdr(g))))
+                printf("wvCds: current %s -> %s (marked in the schematic, not probed)\n"
+                       wvName path)
               )
             )
           )
