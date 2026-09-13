@@ -98,7 +98,12 @@ procedure(wvCdsInstPinName(g pnames)
         )
       )
     )
-    wvName))
+    ; return, not a trailing expression: prog falls through to nil unless a
+    ; return is executed (let returns its last expression, prog does not), so
+    ; ending on wvName returned nil and silently threw the name away
+    return(wvName)
+  )
+)
 
 ; Every selected terminal that produced a name. Terminals that are not pins,
 ; or that could not be named, contribute nothing.

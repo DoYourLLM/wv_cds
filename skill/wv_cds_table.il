@@ -21,7 +21,7 @@ procedure(wvCdsAdd(form)
   let((signals lb1Choices)
     signals = CCSwvPlotSelectedSignals(sch_win)
     if(null(signals) then
-      warn("wvCds: no nets selected in the schematic\n")
+      warn("wvCds: nothing to plot - select a net, a wire, or a device terminal\n")
     else
       wvCdsSendToGui(signals)
       lb1Choices = form->lb1->choices

@@ -58,9 +58,14 @@ procedure(CCSwvPlotSelectedSignals(sch_win)
     when(cv
       r = errset(geGetObjectSelectedSet(cv))
       when(r
-        foreach(cur wvCdsInstPinNames(car(r) pnames)
-          unless(member(cur names)
-            names = append1(names cur)))))
+        cur = wvCdsInstPinNames(car(r) pnames)
+        when(cur
+          ; one line per click that produced currents, so the CIW shows what
+          ; was collected as well as what each name probes
+          printf("wvCds: device terminals in the selection: %L\n" cur)
+          foreach(nm cur
+            unless(member(nm names)
+              names = append1(names nm))))))
     when(sel
       ; pin names of the cellview currently shown in the window
       pins = nil

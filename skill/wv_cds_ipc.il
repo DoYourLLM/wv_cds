@@ -77,7 +77,7 @@ procedure(wvCdsOpenFsdbOnce()
 procedure(wvCdsSendToWv(signals)
   let((ok r tok refused okreply)
     if(null(signals) then
-      warn("wvCds: no nets selected in the schematic\n")
+      warn("wvCds: nothing to plot - select a net, a wire, or a device terminal\n")
     else
       ; bring wv (with the RPC server) up on the first send if needed
       wvCdsEnsureWv()
@@ -120,7 +120,7 @@ procedure(wvCdsSendToWv(signals)
 procedure(wvCdsSendToGui(signals)
   let((r)
     if(null(signals) then
-      warn("wvCds: no nets selected in the schematic\n")
+      warn("wvCds: nothing to plot - select a net, a wire, or a device terminal\n")
     else
       ; make sure wv (for the plot that follows) and the Python GUI are
       ; both running before the first push
