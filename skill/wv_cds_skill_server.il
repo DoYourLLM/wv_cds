@@ -71,10 +71,13 @@ procedure(wvCdsSkillServerStart()
         unless(ipcIsAliveProcess(wvCdsSkillServerId)
           wvCdsSkillServerId = nil))
       unless(wvCdsSkillServerId
-        cmd = sprintf(nil "%s %s/python/wv_cds_skill_server.py --port %d"
+        ; %s, not %d: WV_CDS_SKILL_PORT is a string like the other ports in
+        ; wv_cds_config.il (they end up inside shell command lines), and
+        ; sprintf with %d on a string is a hard error, not a coercion.
+        cmd = sprintf(nil "%s %s/python/wv_cds_skill_server.py --port %s"
                         wvCdsPython() WV_CDS_SH_DIR WV_CDS_SKILL_PORT)
         wvCdsSkillServerId = ipcBeginProcess(cmd "" 'abSkillServerListener)
-        printf("wvCds: skill server listening on 127.0.0.1:%d\n"
+        printf("wvCds: skill server listening on 127.0.0.1:%s\n"
                WV_CDS_SKILL_PORT)))
     wvCdsSkillServerId))
 
