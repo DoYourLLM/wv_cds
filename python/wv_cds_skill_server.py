@@ -117,6 +117,20 @@ def serve_client(conn, addr, token):
             pass
 
 
+def announce(message):
+    """Send one printf() up to Virtuoso, so it shows up in the CIW.
+
+    Used for the bind result. SKILL cannot tell whether the spawn worked - it
+    only knows ipcBeginProcess returned - so if SKILL printed the "listening"
+    line itself it would say so even when the bind failed. Coming from here,
+    the message is evidence rather than an assumption.
+
+    Quotes and % are removed: the text ends up inside a SKILL format string.
+    """
+    safe = message.replace('"', "'").replace("%", "")
+    to_virtuoso('boot printf("wvCds: %s\\n")' % safe)
+
+
 def main(argv):
     port = int(os.environ.get("WV_CDS_SKILL_PORT")
                or os.environ.get("SKILLSERVPORT")
@@ -129,9 +143,14 @@ def main(argv):
     try:
         srv.bind((HOST, port))
     except OSError as exc:
+        # Say so where the user is looking. The usual cause is a server left
+        # over from a Virtuoso that exited (or was killed) without its child
+        # going away - then this one cannot have the port.
+        announce("skill server CANNOT bind %s:%d - %s" % (HOST, port, exc))
         log("cannot bind %s:%d - %s" % (HOST, port, exc))
         return 1
     srv.listen(8)
+    announce("skill server listening on %s:%d" % (HOST, port))
     log("listening on %s:%d" % (HOST, port))
 
     threading.Thread(target=from_virtuoso, daemon=True).start()

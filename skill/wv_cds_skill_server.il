@@ -77,7 +77,14 @@ procedure(wvCdsSkillServerStart()
         cmd = sprintf(nil "%s %s/python/wv_cds_skill_server.py --port %s"
                         wvCdsPython() WV_CDS_SH_DIR WV_CDS_SKILL_PORT)
         wvCdsSkillServerId = ipcBeginProcess(cmd "" 'abSkillServerListener)
-        printf("wvCds: skill server listening on 127.0.0.1:%s\n"
+        ; The port is only announced by the server itself once it has bound it
+        ; (see announce() in the Python file). Saying "listening" here would be
+        ; a guess: all we know is that ipcBeginProcess returned, and the bind
+        ; fails whenever something already holds the port.
+        ;
+        ; No "(port ...)" here on purpose: the checker reads "server (" inside
+        ; the string as a call to a function named server.
+        printf("wvCds: starting the skill server, port %s\n"
                WV_CDS_SKILL_PORT)))
     wvCdsSkillServerId))
 
