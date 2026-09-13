@@ -22,15 +22,16 @@
 ; A CURRENT IS NOT PROBED. geAddNetProbe wants a net, and the instance terminal
 ; path that would give the current - the reference script's
 ; subcktPath + instance~>name + "/" + nodeName, e.g. "/I0/I1/R2/PLUS" - is
-; marked in the schematic instead: the terminal's own figure, highlighted
-; through the instance path it lives in.
+; marked in the schematic instead, with the reference script's own marker: a
+; small ellipse over the terminal, one and a half snap spacings across.
 ;
 ; The markers are rebuilt from the list wv reports, in the same round that
 ; re-probes the nets, so what is marked is exactly what wv is still showing: a
 ; current that was sent clicks ago keeps its marker, one you deleted in wv loses
-; it. That is also why the reference script's small ellipse around the click
-; point is not used - it marks the one point the command was invoked at, and wv
-; can be showing several currents at once.
+; it. That is why the ellipse is placed per terminal instead of at the point the
+; command was invoked at: wv can be showing several currents at once, while that
+; point is a single one. Placing it correctly means converting the terminal's
+; figure into the schematic's coordinates - see wvCdsInstMarkBox.
 ;
 ; The probe step therefore only has to RECOGNISE a current, so that a name like
 ; "R1:1" is not turned into the nonsense path "/R1:1" - which is exactly what
@@ -59,9 +60,10 @@
 ;   makeTable( S_name [ g_default_value ] )   arrayref( g_collection g_index )
 ;   buildString( l_strings [ S_glueCharacters ] )   append1( l_list g_arg )
 ;   geCreateHilightSet( d_cellview l_layerPurposePair [ g_notGlobal ] )
-;   geAddHilightFig( g_hlSetId d_figId [g_drawAll] [l_hierPath] [l_vertex] )
-;   geDrawHilightSet( [w_windowId] [g_hlSetId] )
+;   geAddHilightEllipse( g_hlSetId l_bBox )  geDrawHilightSet( [w] [set] )
 ;   geDeleteHilightSet( g_hlSetId )
+;   dbGetInstTransform( l_dbInstId )  dbTransformPoint( l_point l_list )
+;   schGetEnv( t_variableName )  mapcar( u_func l_arg1 ... )
 ;
 ; Verified with:
 ;   check_new_functions.py wv_cds_instpin.il --strict
@@ -204,29 +206,68 @@ procedure(wvCdsIsCurrent(win nm)
 unless(boundp('wvCdsInstHlSet)
   wvCdsInstHlSet = nil)
 
-; Add one figure, through the hierarchy path it lives in: that is the
-; l_hierPath argument geAddHilightFig's reference gives for "figures located
-; inside the hierarchy", format ( dbInst memInst row column ), which is exactly
-; what geGetObjectSelectedSet hands over. It needs no coordinates, which is what
-; makes it work for a figure that is not in the schematic's own coordinate
-; system. Tried again without the path, for a figure that needs none.
-procedure(wvCdsInstHlFigAdd(fig hierPath)
-  let((r)
-    r = errset(geAddHilightFig(wvCdsInstHlSet fig nil hierPath))
-    unless(car(r)
-      r = errset(geAddHilightFig(wvCdsInstHlSet fig nil)))
-    car(r)))
+; The box, in the schematic's own coordinates, that marks one terminal: the
+; reference script's small ellipse, one and a half snap spacings across.
+;
+; The conversion is the whole point. geEditToWindowPoint's reference states the
+; rule: "Database access inquiries always return coordinate values in terms of
+; the coordinate system of the cellview being interrogated", while "coordinate
+; values passed to SKILL functions are always expressed with respect to the
+; cellview being displayed". A terminal from geGetObjectSelectedSet comes with
+; the path of instances it lives under, so its figure - and its bbox - are in
+; the coordinate system of the innermost of those and NOT in the schematic's.
+; Drawing that bbox straight as an ellipse is what put the marker in the wrong
+; place; the reference script never had the problem because it marks the point
+; the user clicked, which the editor already reports in displayed coordinates.
+;
+; dbGetInstTransform concatenates the transforms along that path - "if the
+; object is an instance or a mosaic, its transform is also concatenated" - and
+; dbTransformPoint applies it, which is the reference's own example: how "a
+; certain shape (such as a pin on the master) in an instance of a cell is
+; repositioned". With no path to walk (a figure already at the top level) there
+; is nothing to convert and the box is used as it comes.
+;
+; nil when the figure has no bbox to mark.
+procedure(wvCdsInstMarkBox(fig hierPath)
+  let((bBox xform ll ur c g h box)
+    box = nil
+    bBox = car(errset(fig~>bBox))
+    when(bBox
+      ll = car(bBox)
+      ur = car(cdr(bBox))
+      xform = car(errset(dbGetInstTransform(mapcar('car hierPath))))
+      when(xform
+        ll = car(errset(dbTransformPoint(ll xform)))
+        ur = car(errset(dbTransformPoint(ur xform))))
+      when(ll && ur
+        ; the middle of the shape
+        c = list((car(ll) + car(ur)) / 2
+                 (car(cdr(ll)) + car(cdr(ur))) / 2)
+        g = schGetEnv("schSnapSpacing")
+        if(g
+          then
+            h = 1.5 * g
+            box = list(list(car(c) - h car(cdr(c)) - h)
+                       list(car(c) + h car(cdr(c)) + h))
+          else
+            ; no snap spacing to size it with: the shape's own box
+            box = list(ll ur)
+        )
+      )
+    )
+    box))
 
-; Mark, in the schematic, every device current wv is showing.
+; Mark, in the schematic, every device current wv is showing, with the reference
+; script's small ellipse over each terminal.
 ;
 ; Rebuilt from wv's list on every probe round, exactly like the net probes, and
 ; NOT drawn once per send: a current that is no longer in wv loses its marker,
 ; and one that an earlier click put there keeps it as long as wv still shows it.
-;
-; The markers are the terminals' own figures, through the instance path recorded
-; with each name. The reference script's small ellipse around the click point
-; cannot do this - it marks the one point the command was invoked at, and wv can
-; be showing several currents at once.
+; It has to be per terminal for that, so it comes from each terminal's recorded
+; figure - which is also why the reference script's own use of a point cannot be
+; copied: it marks the one point the command was invoked at, and wv can be
+; showing several currents at once. wvCdsInstMarkBox is what puts those figures
+; into the schematic's coordinates.
 ;
 ; Deleted BY SET before rebuilding, not with geDeleteAllHilightSet the way the
 ; reference script cleans up, which would throw away highlights the user made
@@ -238,9 +279,10 @@ procedure(wvCdsInstHlFigAdd(fig hierPath)
 ; the objects are visible - hence the enable and the geDrawHilightSet.
 ;
 ; Returns how many were marked. A name wv is showing that this session never
-; sent has no figure recorded for it, so it is counted but not drawn.
+; sent has no figure recorded for it, and a figure with no bbox cannot be drawn:
+; both are counted as currents but not marked.
 procedure(wvCdsInstMarkShow(cv win names)
-  let((r n lpp e nm)
+  let((r n lpp e nm box)
     ; the layer the reference script marks with
     lpp = list("hilite" "drawing1")
     when(wvCdsInstHlSet
@@ -255,8 +297,10 @@ procedure(wvCdsInstMarkShow(cv win names)
         foreach(nm names
           e = wvCdsInstMarkOf(nm)
           when(e
-            when(wvCdsInstHlFigAdd(car(e) car(cdr(e)))
-              n = n + 1)))
+            box = wvCdsInstMarkBox(car(e) car(cdr(e)))
+            when(box
+              when(car(errset(geAddHilightEllipse(wvCdsInstHlSet box)))
+                n = n + 1))))
         errset(geDrawHilightSet(win wvCdsInstHlSet)))
       unless(wvCdsInstHlSet
         warn("wvCds: could not open a highlight set - terminals left unmarked\n")))
@@ -267,7 +311,7 @@ procedure(wvCdsInstMarkShow(cv win names)
 ; carries the same hierarchy prefix a net from this window would. The probe
 ; path is recorded as the name is built - wvCdsInstProbePathFromSch can work
 ; the same path out again from the name alone - and the figure, with the
-; instance path it lives in, is left in wvCdsInstHlFigs for wvCdsInstHlShow.
+; instance path it lives in, is left in the table for wvCdsInstMarkShow.
 procedure(wvCdsInstPinName(g pnames)
   prog((fig inst net sigs instName sig n idx wvName path instKey)
     wvName = nil
