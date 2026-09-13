@@ -35,6 +35,7 @@ side).
 
 import os
 import queue
+import re
 import socket
 import subprocess
 import threading
@@ -269,6 +270,9 @@ class SignalTableApp:
         threading.Thread(target=self._send_worker,
                          args=(names, sh_dir), daemon=True).start()
 
+    # wv_cds_plot.sh answers exactly "<n> new, <m> already plotted"
+    _PLOT_RE = re.compile(r"^(\d+) new, (\d+) already plotted$")
+
     def _send_worker(self, names, sh_dir):
         """Make sure wv is up, then plot every name.
 
@@ -280,25 +284,46 @@ class SignalTableApp:
         items do. It does nothing when a wv is already listening, and waits
         for the port otherwise - so the first Send to WV works instead of
         failing with "Connection refused".
+
+        The log reports one line per send, not one per net: the per-net replies
+        are added up, and only the ones that failed get their own line. This is
+        the normal path, taken on every Send to WV, so it has to stay quiet.
         """
         starter = os.path.join(sh_dir, "start_wv.sh")
         if os.path.isfile(starter):
             rc, out, err = self._run_sh(sh_dir, "start_wv.sh", "-b")
-            self.events.put(("log",
-                             self._fmt_result("start wv", rc, out, err)))
             if rc != 0:
+                self.events.put(("log",
+                                 self._fmt_result("start wv", rc, out, err)))
                 self.events.put(("log",
                     "[wv] wv is not up - see /tmp/wv_cds_wv.log\n"))
                 return
+            # rc == 0 is the normal outcome, and start_wv.sh is chatty about it
+            # (package, binary, command line, "already listening"), so say
+            # nothing here rather than paste all of that into the log.
         else:
             self.events.put(("log",
                 "[wv] start_wv.sh not found in the sh dir - plotting without "
                 "starting wv\n"))
 
+        new = skipped = 0
+        failed = []
         for name in names:
             rc, out, err = self._run_sh(sh_dir, "wv_cds_plot.sh", name)
-            self.events.put(("log",
-                             self._fmt_result("plot %s" % name, rc, out, err)))
+            m = self._PLOT_RE.match((out or "").strip())
+            if rc == 0 and m:
+                new += int(m.group(1))
+                skipped += int(m.group(2))
+            else:
+                failed.append(self._fmt_result("plot %s" % name, rc, out, err))
+
+        line = "[wv] %d nets: %d new, %d already on screen" % (
+            len(names), new, skipped)
+        if failed:
+            line += ", %d failed" % len(failed)
+        self.events.put(("log", line + "\n"))
+        for entry in failed:
+            self.events.put(("log", entry))
 
     def _run_sh(self, sh_dir, script, arg):
         path = os.path.join(sh_dir, script)
@@ -314,22 +339,26 @@ class SignalTableApp:
             return -1, "", str(e)
 
     @staticmethod
-    def _fmt_result(label, rc, out, err):
-        """One log line: stdout, then stderr, then the exit code if silent.
+    def _one_line(text):
+        """Collapse a script's multi-line output into one line.
+
+        start_wv.sh and wv_cds_plot.sh print several lines, and joining them
+        verbatim produced a single enormous log line.
+        """
+        return " ".join((text or "").split())
+
+    @classmethod
+    def _fmt_result(cls, label, rc, out, err):
+        """One log line for a step that failed.
 
         stderr is kept even when stdout has something, because the scripts
-        print a short token on stdout ("refused", "sent") and the explanation
-        on stderr - dropping it would leave only the bare token.
+        print a short token on stdout ("refused") and the explanation on
+        stderr - dropping it would leave only the bare token.
         """
-        out = (out or "").strip()
-        err = (err or "").strip()
-        parts = [p for p in (out, err) if p]
-        if parts:
-            tail = " ".join(parts)
-            if rc != 0:
-                tail = "%s (exit=%d)" % (tail, rc)
-        else:
-            tail = "exit=%d" % rc
+        parts = [p for p in (cls._one_line(out), cls._one_line(err)) if p]
+        tail = " ".join(parts)
+        if rc != 0:
+            tail = ("%s (exit=%d)" % (tail, rc)).strip()
         return "[wv] %s => %s\n" % (label, tail)
 
     # ------------------------------------------------------ TCP listener
@@ -364,8 +393,9 @@ class SignalTableApp:
 
     def _handle_conn(self, conn, addr):
         with conn:
-            self.events.put(("log",
-                "[listen] connection from %s:%d\n" % (addr[0], addr[1])))
+            # No per-connection log line: every pushed net opens its own
+            # connection, so this used to add one line per net while carrying
+            # no information. Arrivals are visible as rows in the table.
             stream = conn.makefile("r", encoding="utf-8", errors="replace")
             try:
                 for line in stream:
