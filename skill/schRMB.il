@@ -2,8 +2,8 @@
 ;
 ; Adds two items to the net right-click menu:
 ;
-;   Send to WV (Direct)  -> wvCdsSendSelectionDirect()  -> wv RPC      127.0.0.1:61888
-;   Send to WV_CDS       -> wvCdsSendSelectionToGui()   -> Python GUI  127.0.0.1:61889
+;   Send to WV (Direct)            -> wvCdsSendSelectionDirect() -> wv RPC      127.0.0.1:61888
+;   Send to WV_CDS (Interactive)   -> wvCdsSendSelectionToGui()  -> Python GUI  127.0.0.1:61889
 ;
 ; Both callbacks take no arguments and read the schematic selection
 ; themselves (CCSwvPlotSelectedSignals on the current schematic window).
@@ -46,10 +46,14 @@ procedure(wvCdsRmbAddItem(popMenu itemName itemText callback)
     0))
 
 ; put both items on one category menu. They are added in reverse so the
-; final menu reads "Send to WV (Direct)" first and "Send to WV_CDS" second.
+; final menu reads "Send to WV (Direct)" first and "Send to WV_CDS
+; (Interactive)" second.
+;
+; "(Interactive)" is part of the visible text only - the item NAME stays
+; wvCdsSendGuiRmb, which is what wvCdsRmbAddItem deletes before re-inserting.
 procedure(wvCdsRmbAddPair(popMenu)
   wvCdsRmbAddItem(popMenu 'wvCdsSendGuiRmb
-                  "Send to WV_CDS" "wvCdsSendSelectionToGui()")
+                  "Send to WV_CDS (Interactive)" "wvCdsSendSelectionToGui()")
   wvCdsRmbAddItem(popMenu 'wvCdsSendDirectRmb
                   "Send to WV (Direct)" "wvCdsSendSelectionDirect()"))
 

@@ -7,14 +7,14 @@ Right-click a net in a Virtuoso schematic to plot it in wv:
 | Right-click item | What it does |
 |---|---|
 | **Send to WV (Direct)** | plots straight in wv, then probes those nets in the schematic |
-| **Send to WV_CDS** | puts the net in a small Python table; you plot from there when you are ready, and the schematic probes update too |
+| **Send to WV_CDS (Interactive)** | puts the net in a small Python table; you plot from there when you are ready, and the schematic probes update too |
 
 The items sit at the top of the net menu. **Shift-click to select several nets
 at once** - one net or n, they are all sent together:
 
 | One net | Several nets (Shift-click) |
 |---|---|
-| ![The Wire menu: Send to WV (Direct) and Send to WV_CDS at the top](images/wv-cds-rmb-wire.png) | ![The Multiple menu: the same two items at the top](images/wv-cds-rmb-multiple.png) |
+| ![The Wire menu: Send to WV (Direct) and Send to WV_CDS (Interactive) at the top](images/wv-cds-rmb-wire.png) | ![The Multiple menu: the same two items at the top](images/wv-cds-rmb-multiple.png) |
 
 Both items start whatever they need - you do not have to launch wv, source
 `wv_rpc_server.tcl`, or start the Python GUI by hand.
@@ -23,7 +23,7 @@ Both items start whatever they need - you do not have to launch wv, source
 
 - Linux, Virtuoso with the schematic editor
 - `wv` (Synopsys Custom WaveView), startable as `wv -ace_gui <script>`
-- Python 3 with Tkinter, for `Send to WV_CDS` only (`sudo apt install python3-tk`)
+- Python 3 with Tkinter, for `Send to WV_CDS (Interactive)` only (`sudo apt install python3-tk`)
 
 ## Setup
 
@@ -62,11 +62,11 @@ The first click starts wv for you, but wv comes up with no waveform file open,
 and signal names cannot be resolved until one is. Open your fsdb in wv, then
 click the net again - from then on plots resolve against that file.
 
-## The Send to WV_CDS flow
+## The Send to WV_CDS (Interactive) flow
 
-![Right-click a net and pick Send to WV_CDS; the net lands in the GUI table; press Send to WV there](images/wv-cds-send-to-wv-cds.png)
+![Right-click a net and pick Send to WV_CDS (Interactive); the net lands in the GUI table; press Send to WV there](images/wv-cds-send-to-wv-cds.png)
 
-1. Right-click the net and pick **Send to WV_CDS**.
+1. Right-click the net and pick **Send to WV_CDS (Interactive)**.
 2. The net shows up in the table at the top of the **WV_CDS Python GUI**.
 3. Select the rows you want and press **Send to WV** to plot them in wv.
 
@@ -94,7 +94,7 @@ To have the direct path open a fixed file for you instead of opening it by hand
 right-click a net --> CCSwvPlotSelectedSignals
   |-- Send to WV (Direct) --> wv_cds_openfsdb.sh   (only when WV_CDS_FSDB is set)
   |                           wv_cds_plot.sh  --> 127.0.0.1:61888  (wv's RPC server)
-  +-- Send to WV_CDS ------> wv_cds_add.sh   --> 127.0.0.1:61889  (Python GUI)
+  +-- Send to WV_CDS (Interactive) ------> wv_cds_add.sh   --> 127.0.0.1:61889  (Python GUI)
                               Send to WV in the GUI --> wv_cds_plot.sh --> 61888
 ```
 
@@ -128,7 +128,7 @@ separate ports because two servers cannot share one.
   schematic. It **clears every probe in that window first, including probes you
   placed by hand yourself**; that is what makes a net you removed from wv lose
   its probe. If wv does not answer, no probe is touched.
-- **`Send to WV_CDS` probes the same way, in a different order.** There the
+- **`Send to WV_CDS (Interactive)` probes the same way, in a different order.** There the
   plotting happens in the Python GUI, which afterwards asks Virtuoso to run the
   probe step. Virtuoso cannot be called from outside, so the package runs a
   small local server that hands whatever it receives to Virtuoso, which

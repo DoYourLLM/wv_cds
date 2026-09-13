@@ -17,8 +17,8 @@ library only.
 
 ## Running
 
-You normally never start it by hand - the first `Send to WV_CDS` starts it in
-the background, detached. To run it yourself:
+You normally never start it by hand - the first `Send to WV_CDS (Interactive)`
+starts it in the background, detached. To run it yourself:
 
     python3 wv_cds_gui.py
 
@@ -40,8 +40,8 @@ There is no waveform-file setting here: the file is opened inside wv.
 
 ## Using it
 
-1. Select nets in the schematic, right-click, choose **Send to WV_CDS** - they
-   appear in the table with their hierarchy path
+1. Select nets in the schematic, right-click, choose **Send to WV_CDS
+   (Interactive)** - they appear in the table with their hierarchy path
 2. Or type a name into the entry box and press **Add**; select rows and press
    **Remove** to drop them
 3. Press **Send to WV** to plot every row. It runs `start_wv.sh -b` from the sh

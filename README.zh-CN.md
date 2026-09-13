@@ -7,14 +7,14 @@
 | 右键菜单项 | 作用 |
 |---|---|
 | **Send to WV (Direct)** | 直接画到 wv，然后在原理图里把这些 net probe 出来 |
-| **Send to WV_CDS** | 把 net 放进一个小 Python 表格；什么时候想画，你再从那里画，原理图的 probe 也会跟着更新 |
+| **Send to WV_CDS (Interactive)** | 把 net 放进一个小 Python 表格；什么时候想画，你再从那里画，原理图的 probe 也会跟着更新 |
 
 两个菜单项就在 net 菜单最上面。**按住 Shift 可以一次选中多条 net** —— 一条还是
 n 条，都会一起送过去：
 
 | 选中一条 net | 按住 Shift 选多条 |
 |---|---|
-| ![Wire 菜单：最上面是 Send to WV (Direct) 和 Send to WV_CDS](images/wv-cds-rmb-wire.png) | ![Multiple 菜单：同样两项在最上面](images/wv-cds-rmb-multiple.png) |
+| ![Wire 菜单：最上面是 Send to WV (Direct) 和 Send to WV_CDS (Interactive)](images/wv-cds-rmb-wire.png) | ![Multiple 菜单：同样两项在最上面](images/wv-cds-rmb-multiple.png) |
 
 两个菜单项都会自己启动需要的东西 —— 你不必手工启动 wv、手工 source
 `wv_rpc_server.tcl`，也不必手工打开 Python GUI。
@@ -23,7 +23,7 @@ n 条，都会一起送过去：
 
 - Linux，Virtuoso 带原理图编辑器
 - `wv`（Synopsys Custom WaveView），必须能用 `wv -ace_gui <script>` 启动
-- Python 3 带 Tkinter，只有 `Send to WV_CDS` 需要
+- Python 3 带 Tkinter，只有 `Send to WV_CDS (Interactive)` 需要
   （`sudo apt install python3-tk`）
 
 ## 安装
@@ -61,11 +61,11 @@ load("/where/you/put/wv_cds/skill/load_wv_cds.il")
 第一次点击会替你启动 wv，但 wv 起来时没有打开任何波形文件，而信号名要对着文件
 才能解析。先在 wv 里打开你的 fsdb，再回去点那个 net —— 之后画图就都用这个文件。
 
-## Send to WV_CDS 的流程
+## Send to WV_CDS (Interactive) 的流程
 
-![右键一个 net 选 Send to WV_CDS；net 落进 GUI 表格；在那儿按 Send to WV](images/wv-cds-send-to-wv-cds.png)
+![右键一个 net 选 Send to WV_CDS (Interactive)；net 落进 GUI 表格；在那儿按 Send to WV](images/wv-cds-send-to-wv-cds.png)
 
-1. 右键那个 net，选 **Send to WV_CDS**。
+1. 右键那个 net，选 **Send to WV_CDS (Interactive)**。
 2. net 出现在 **WV_CDS Python GUI** 窗口顶部的表格里。
 3. 选中你要的行，按 **Send to WV** 把它们画到 wv。
 
@@ -92,7 +92,7 @@ wv 起好：
 right-click a net --> CCSwvPlotSelectedSignals
   |-- Send to WV (Direct) --> wv_cds_openfsdb.sh   (only when WV_CDS_FSDB is set)
   |                           wv_cds_plot.sh  --> 127.0.0.1:61888  (wv's RPC server)
-  +-- Send to WV_CDS ------> wv_cds_add.sh   --> 127.0.0.1:61889  (Python GUI)
+  +-- Send to WV_CDS (Interactive) ------> wv_cds_add.sh   --> 127.0.0.1:61889  (Python GUI)
                               Send to WV in the GUI --> wv_cds_plot.sh --> 61888
 ```
 
@@ -122,7 +122,7 @@ skill 和 python 这两半各自的说明见 `skill/README.md`、`python/README.
   信号（这个工具画过的全部，减去你在 wv 里删掉的），然后在原理图里给每个都加上
   net probe。**它会先清空该窗口里的所有 probe —— 包括你自己手动放的**；正是靠
   这一步，你在 wv 里删掉的 net 才会跟着失去 probe。wv 没应答时，一个 probe 都不动。
-- **`Send to WV_CDS` 同样会 probe，只是顺序不同。** 这条路画图发生在 Python GUI 里，
+- **`Send to WV_CDS (Interactive)` 同样会 probe，只是顺序不同。** 这条路画图发生在 Python GUI 里，
   画完之后由 GUI 反过来请求 Virtuoso 执行 probe。Virtuoso 没法被外部直接调用，
   所以包里跑一个小型本地服务器，把收到的东西交给 Virtuoso **当 SKILL 求值**
   （`python/wv_cds_skill_server.py`，照 Cadence 官方示例移植）。**能连上这个端口的人
